@@ -1,0 +1,22 @@
+# Node.js
+node_modules/
+dist/
+build/
+*.log
+.env*
+coverage/
+.next/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# General
+.DS_Store
+.idea/
+.vscode/
+*.swp

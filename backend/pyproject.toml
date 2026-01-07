@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "spec-generator-backend"
+version = "0.1.0"
+description = "Backend for Specification Generator"
+authors = ["Spec Generator Team"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.110.0"
+uvicorn = "^0.27.0"
+pydantic = "^2.6.0"
+dashscope = "^2.20.0"
+python-dotenv = "^1.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+httpx = "^0.26.0"
+ruff = "^0.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

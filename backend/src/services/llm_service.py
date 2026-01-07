@@ -2,6 +2,7 @@ import os
 import dashscope
 from http import HTTPStatus
 from typing import Generator
+from dashscope.api_entities.dashscope_response import Message
 from src.core.prompt_loader import get_prompt_loader
 
 class LLMService:
@@ -16,9 +17,9 @@ class LLMService:
     def generate_stream(self, user_description: str) -> Generator[str, None, None]:
         system_prompt = self.prompt_loader.load_prompt()
         
-        messages = [
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': user_description}
+        messages: list[Message] = [
+            Message(role='system', content=system_prompt),
+            Message(role='user', content=user_description)
         ]
 
         responses = dashscope.Generation.call(
@@ -41,6 +42,8 @@ class LLMService:
                     # Then output final response
                     content = message.content
                     if content:
+                        # Type narrowing: deepseek-v3.2 returns string content only
+                        assert isinstance(content, str), f"Expected string content, got {type(content).__name__}"
                         yield content
             else:
                 # Handle error

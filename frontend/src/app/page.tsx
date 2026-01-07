@@ -4,35 +4,21 @@ import { useState } from 'react';
 import InputForm from '@/components/input-form';
 import MarkdownPreview from '@/components/markdown-preview';
 import { generateSpecStream } from '@/services/api';
+import { useStreamParser } from '@/hooks/useStreamParser';
 
 export default function Home() {
-  const [reasoningContent, setReasoningContent] = useState('');
-  const [markdownContent, setMarkdownContent] = useState('');
+  const { reasoningContent, markdownContent, parseChunk, reset } = useStreamParser();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleGenerate = async (description: string) => {
     setIsLoading(true);
     setError('');
-    setReasoningContent('');
-    setMarkdownContent(''); // Reset content
+    reset();
 
     await generateSpecStream(
       description,
-      (chunk) => {
-        // Parse special markers for reasoning content
-        const reasoningMatch = chunk.match(/<!--REASONING_START-->(.*?)<!--REASONING_END-->/s);
-        if (reasoningMatch) {
-          setReasoningContent((prev) => prev + reasoningMatch[1]);
-          // Extract remaining content as markdown
-          const remainingContent = chunk.replace(/<!--REASONING_START-->.*?<!--REASONING_END-->/s, '');
-          if (remainingContent) {
-            setMarkdownContent((prev) => prev + remainingContent);
-          }
-        } else {
-          setMarkdownContent((prev) => prev + chunk);
-        }
-      },
+      parseChunk,
       (err) => {
         setError(err);
         setIsLoading(false);

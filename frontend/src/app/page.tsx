@@ -279,14 +279,17 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Scroll to bottom button */}
+      {/* Scroll to bottom button - centered above input */}
       {showScrollButton && (
-        <button
-          onClick={scrollToBottom}
-          className="fixed bottom-24 right-8 p-3 bg-white border border-gray-200 rounded-full shadow-lg hover:bg-gray-50 transition-colors z-10"
-        >
-          <ArrowDown size={20} className="text-gray-600" />
-        </button>
+        <div className="fixed bottom-24 left-0 right-0 flex justify-center z-10 pointer-events-none">
+          <button
+            onClick={scrollToBottom}
+            className="p-2 px-4 bg-white border border-gray-200 rounded-full shadow-lg hover:bg-gray-50 transition-colors pointer-events-auto flex items-center gap-2 text-sm text-gray-600"
+          >
+            <ArrowDown size={16} />
+            <span>滚动到底部</span>
+          </button>
+        </div>
       )}
 
       {/* Fixed Bottom Input */}

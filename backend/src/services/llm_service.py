@@ -46,9 +46,13 @@ class LLMService:
             if response.status_code == HTTPStatus.OK:
                 if response.output and response.output.choices:
                     message = response.output.choices[0].message
-                    reasoning_content = getattr(message, "reasoning_content", None)
-                    if reasoning_content:
-                        yield self._emit_event({"type": "reasoning", "content": reasoning_content})
+                    # Safely get reasoning_content - DashScope objects raise KeyError for missing attrs
+                    try:
+                        reasoning_content = message.reasoning_content
+                        if reasoning_content:
+                            yield self._emit_event({"type": "reasoning", "content": reasoning_content})
+                    except (KeyError, AttributeError):
+                        pass  # No reasoning content available
                     content = message.content
                     if content:
                         assert isinstance(content, str)

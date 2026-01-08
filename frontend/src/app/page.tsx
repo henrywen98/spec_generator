@@ -7,9 +7,6 @@ import { generateSpecStream, GenerationMode } from '@/services/api';
 import { useStreamParser, TokenUsage } from '@/hooks/useStreamParser';
 import { ArrowDown } from 'lucide-react';
 
-// Keywords that trigger regeneration
-const REGENERATE_KEYWORDS = ['生成新版', '整合修改', '输出完整版', '生成完整版', '重新生成'];
-
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -103,51 +100,24 @@ export default function Home() {
     return prdMessages.length > 0 ? prdMessages[prdMessages.length - 1].content : '';
   }, [messages]);
 
-  const determineMode = useCallback((userInput: string): { mode: GenerationMode; isNewVersion: boolean } => {
-    // No PRD yet = generate mode
-    if (versionCount === 0) {
-      return { mode: 'generate', isNewVersion: true };
-    }
-
-    // Check for regenerate keywords
-    const shouldRegenerate = REGENERATE_KEYWORDS.some(kw => userInput.includes(kw));
-    if (shouldRegenerate) {
-      return { mode: 'regenerate', isNewVersion: true };
-    }
-
-    // Default to suggest mode (lightweight discussion)
-    return { mode: 'suggest', isNewVersion: false };
+  const determineMode = useCallback((): { mode: GenerationMode } => {
+    // No PRD yet = generate mode, otherwise chat mode
+    // LLM will decide whether to give suggestions or full document based on user intent
+    return { mode: versionCount === 0 ? 'generate' : 'chat' };
   }, [versionCount]);
 
   const getPromptLabel = (mode: GenerationMode): string => {
-    switch (mode) {
-      case 'generate': return '🆕 初稿生成';
-      case 'suggest': return '💡 修改建议';
-      case 'regenerate': return '📝 新版生成';
-    }
+    return mode === 'generate' ? '🆕 初稿生成' : '💬 对话模式';
   };
 
   const handleSend = useCallback(async (userInput: string) => {
     setIsLoading(true);
     reset();
 
-    const { mode, isNewVersion } = determineMode(userInput);
+    const { mode } = determineMode();
     const currentPrd = getLatestPrd();
     const promptLabel = getPromptLabel(mode);
-
-    // For regenerate, collect recent discussion as modifications
-    let contextForRegenerate = userInput;
-    if (mode === 'regenerate') {
-      // Collect suggestions from recent messages
-      const recentSuggestions = messages
-        .filter(m => m.role === 'assistant' && !m.version && !m.content.startsWith('❌ 错误'))
-        .map(m => m.content)
-        .join('\n\n');
-      if (recentSuggestions) {
-        const trimmed = recentSuggestions.slice(-4000);
-        contextForRegenerate = trimmed + '\n\n用户确认: ' + userInput;
-      }
-    }
+    const isInitialGeneration = mode === 'generate';
 
     // Add user message
     const userMessage: Message = {
@@ -157,7 +127,9 @@ export default function Home() {
     };
 
     // Add placeholder assistant message
-    const newVersion = isNewVersion ? versionCount + 1 : undefined;
+    // For initial generation, always create a new version
+    // For chat mode, we'll update version later if LLM outputs a full PRD
+    const newVersion = isInitialGeneration ? versionCount + 1 : undefined;
     const assistantMessage: Message = {
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -168,7 +140,7 @@ export default function Home() {
     };
 
     setMessages(prev => [...prev, userMessage, assistantMessage]);
-    if (isNewVersion) {
+    if (isInitialGeneration) {
       setVersionCount(prev => prev + 1);
     }
 
@@ -176,13 +148,13 @@ export default function Home() {
     abortControllerRef.current = controller;
     const options = {
       mode,
-      currentPrd: mode === 'generate' ? undefined : currentPrd,
+      currentPrd: isInitialGeneration ? undefined : currentPrd,
       sessionId,
       signal: controller.signal,
     };
 
     await generateSpecStream(
-      mode === 'regenerate' ? contextForRegenerate : userInput,
+      userInput,
       parseChunk,
       (err) => {
         updateLastAssistant(message => ({
@@ -210,7 +182,6 @@ export default function Home() {
     );
   }, [
     versionCount,
-    messages,
     sessionId,
     parseChunk,
     reset,
@@ -257,8 +228,7 @@ export default function Home() {
                 在下方输入您的功能需求描述，AI 将为您生成标准化的产品需求文档。
               </p>
               <div className="mt-6 text-sm text-gray-400 space-y-1">
-                <p>💡 生成后可继续输入修改意见进行讨论</p>
-                <p>📝 输入"生成新版"将整合讨论内容生成新版本</p>
+                <p>💡 生成后可继续对话，AI 会自动判断是给建议还是直接修改</p>
               </div>
             </div>
           ) : (
@@ -300,7 +270,7 @@ export default function Home() {
         placeholder={
           versionCount === 0
             ? "描述您的功能需求..."
-            : "输入修改意见，或输入\"生成新版\"整合讨论内容..."
+            : "继续对话，提出修改意见或要求生成新版..."
         }
       />
     </div>

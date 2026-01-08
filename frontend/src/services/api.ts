@@ -1,7 +1,7 @@
 // 使用相对路径，由 Next.js rewrites 代理到后端
 const API_BASE_URL = '/api/v1';
 
-export type GenerationMode = 'generate' | 'suggest' | 'regenerate';
+export type GenerationMode = 'generate' | 'chat';
 
 export interface GenerateOptions {
   mode?: GenerationMode;

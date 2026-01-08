@@ -3,10 +3,10 @@ from datetime import datetime, timezone
 from typing import Literal
 
 class GenerationRequest(BaseModel):
-    description: str = Field(..., min_length=1, description="Feature description or edit instructions")
+    description: str = Field(..., min_length=1, description="Feature description or user message")
     stream: bool = Field(default=True, description="Whether to stream the response")
-    mode: Literal["generate", "suggest", "regenerate"] = Field(default="generate", description="Generation mode: generate=initial PRD, suggest=modification suggestions, regenerate=new version")
-    current_prd: str | None = Field(default=None, description="Current PRD content for suggest/regenerate modes")
+    mode: Literal["generate", "chat"] = Field(default="generate", description="Generation mode: generate=initial PRD from scratch, chat=discuss/modify existing PRD")
+    current_prd: str | None = Field(default=None, description="Current PRD content for chat mode")
     session_id: str | None = Field(default=None, description="Session identifier for conversation tracking")
 
 class GenerationResponse(BaseModel):

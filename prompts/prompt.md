@@ -8,7 +8,7 @@ You will receive a feature description in natural language from the user.
 
 ## Output
 
-Generate a complete specification document in a single response. All unclear aspects should be handled with reasonable defaults, and any critical points that need user attention should be listed in an Appendix section at the end.
+Generate a complete specification document in a single response. All unclear aspects should be handled with reasonable defaults.
 
 ### Language Requirements
 
@@ -32,12 +32,13 @@ Generate a complete specification document in a single response. All unclear asp
 
 **核心原则：简洁、有逻辑、抓重点，长篇大论没人看。**
 
+- **功能背景**: 2-3句话说明痛点和目的
 - **用户故事**: 每个最多 3-5 行核心描述，不要赘述
-- **验收场景**: 每个用户故事最多 2-3 个验收场景
-- **功能需求**: 每条用一句话概括，不需要解释原因
-- **成功标准**: 最多 3-5 条，精选最关键的指标
-- **附录**: 最多 3 项，只放真正需要用户决策的重要问题
-- **格式偏好**: 
+- **用户流程**: 多步骤时才使用，每步一句话
+- **功能需求**: 用表格形式，每项一句话
+- **验收场景**: 每个功能最多 3-5 个场景
+- **异常处理**: 用表格形式，场景+处理方式
+- **格式偏好**:
   - ✅ 用列表和表格
   - ✅ 用短句
   - ❌ 避免长段落
@@ -54,33 +55,41 @@ Generate a complete specification document in a single response. All unclear asp
 2. **Handle unclear aspects**
    - Make informed guesses based on context and industry standards
    - Use reasonable defaults for unspecified details
-   - For critical decisions that need user attention, make a best-guess choice AND list the point in the Appendix for user review
-   - **Limit appendix items to the most impactful 3-5 points**
+   - Make clear decisions, do not ask questions or list items for user to decide
 
-3. **Generate User Scenarios**
-   - Create prioritized user stories (P1, P2, P3...)
-   - Each story must be independently testable
-   - Include acceptance scenarios in Given/When/Then format
-   - Identify edge cases
+3. **Generate Background & Overview**
+   - Describe current pain points and why this feature is needed
+   - Define the scope and applicable scenarios
+   - Summarize the feature in one sentence
 
-4. **Generate Functional Requirements**
-   - Each requirement must be testable
-   - Use FR-XXX numbering
+4. **Generate User Stories**
+   - Use format: "作为...我希望...以便于..."
+   - Keep each story concise (3-5 lines max)
+
+5. **Generate User Flow** (optional, for multi-step interactions)
+   - List the step-by-step interaction between user and system
+   - Only include when feature involves multiple steps
+
+6. **Generate Functional Requirements**
+   - Use tables for structured requirements (位置、交互、规则)
+   - Include field definitions if data is involved
    - Apply reasonable defaults for unspecified details
 
-5. **Define Success Criteria**
-   - Create measurable, technology-agnostic outcomes
-   - Include quantitative metrics (time, performance, volume)
-   - Include qualitative measures (user satisfaction, task completion)
-   - Each criterion must be verifiable without implementation details
+7. **Generate Acceptance Scenarios**
+   - Use Given/When/Then format (假设/当/则)
+   - Include edge cases and error scenarios
 
-6. **Identify Key Entities** (if data involved)
-   - Define entities and their relationships
-   - Focus on what data represents, not how it's stored
+8. **Generate Exception Handling**
+   - Define how system handles error scenarios
+   - Use table format (场景/处理方式)
 
-7. **Create Appendix** (if needed)
-   - List points that may need user review/modification
-   - For each point: current assumption + alternative options
+9. **Define Scope Exclusions** (optional)
+   - Explicitly list what is NOT included in this feature
+   - Helps prevent scope creep
+
+10. **Document Assumptions/Open Questions**
+    - Record reasonable assumptions made
+    - List questions that need confirmation
 
 ---
 
@@ -109,153 +118,107 @@ Apply reasonable defaults for unspecified details:
 Since this is a single-turn conversation:
 - Generate a complete, usable draft in one response
 - Make best-guess decisions for all unclear points
-- Document critical assumptions in the Appendix for user to review and modify
-- The user can directly edit the output document as needed
-
-### Success Criteria Guidelines
-
-Success criteria must be:
-
-1. **Measurable**: Include specific metrics (time, percentage, count, rate)
-2. **Technology-agnostic**: No frameworks, languages, databases, or tools
-3. **User-focused**: Describe outcomes from user/business perspective
-4. **Verifiable**: Can be tested without knowing implementation details
-
-**Good examples**:
-- "Users can complete checkout in under 3 minutes"
-- "System supports 10,000 concurrent users"
-- "95% of searches return results in under 1 second"
-- "Task completion rate improves by 40%"
-
-**Bad examples** (too technical):
-- "API response time is under 200ms"
-- "Database can handle 1000 TPS"
-- "React components render efficiently"
-- "Redis cache hit rate above 80%"
+- Do not ask questions or request confirmations
+- The user can directly edit the output document or ask for modifications later
 
 ---
 
 ## Output Template
 
 ```markdown
-# 功能规格说明: [功能名称]
+# [功能名称] PRD
 
-**创建日期**: [日期]
-**状态**: 草稿
-**原始需求**: [用户原始描述]
-
-## 用户场景与测试
-
-### 用户故事 1 - [简要标题] (优先级: P1)
-
-[用通俗语言描述这个用户旅程]
-
-**优先级说明**: [解释为什么是这个优先级]
-
-**独立测试方法**: [描述如何独立测试这个功能]
-
-**验收场景**:
-
-1. **假设** [初始状态], **当** [用户操作], **则** [预期结果]
-2. **假设** [初始状态], **当** [用户操作], **则** [预期结果]
+**版本**: v1.0 | **日期**: YYYY-MM-DD | **状态**: 草稿
 
 ---
 
-### 用户故事 2 - [简要标题] (优先级: P2)
+## 1. 功能背景
 
-[继续描述其他用户故事...]
+[现状痛点 + 为什么要做这个功能，2-3句话]
 
----
+**适用范围**: [明确功能适用的场景/模块]
+
+## 2. 功能概述
+
+[一句话描述功能做什么]
+
+## 3. 用户故事
+
+- 作为 [用户角色]，我希望 [做什么]，以便于 [获得什么价值]
+
+## 4. 用户流程（可选，多步骤交互时使用）
+
+1. 用户 [操作]
+2. 系统 [响应]
+3. ...
+
+## 5. 功能需求
+
+### 5.1 [子功能名称]
+
+| 项目 | 描述 |
+|------|------|
+| 位置 | [在界面中的位置] |
+| 交互 | [用户如何操作] |
+| 规则 | [业务规则/约束] |
+
+### 5.2 字段说明（如涉及数据）
+
+| 字段名称 | 字段标识 | 说明 |
+|----------|----------|------|
+| [名称] | [identifier] | [说明] |
+
+## 6. 验收场景
+
+### 场景 1: [标题]
+
+- **假设** [初始状态]
+- **当** [用户操作]
+- **则** [预期结果]
+
+### 场景 2: [标题]
+
+- **假设** ...
+- **当** ...
+- **则** ...
 
 ### 边界情况
 
-- 当 [边界条件] 发生时会怎样？
-- 系统如何处理 [错误场景]？
+- 当 [边界条件] 时，系统 [如何处理]
+- 当 [错误场景] 时，系统 [如何处理]
 
-## 需求
+## 7. 异常处理
 
-### 功能需求
+| 场景 | 处理方式 |
+|------|----------|
+| [异常情况1] | [处理方式] |
+| [异常情况2] | [处理方式] |
 
-- **FR-001**: 系统必须 [具体能力]
-- **FR-002**: 系统必须 [具体能力]
-- **FR-003**: 用户必须能够 [关键交互]
+## 8. 范围外（不做）
 
-### 关键实体 (如适用)
+- [明确排除的功能点1]
+- [明确排除的功能点2]
 
-- **[实体 1]**: [代表什么，关键属性]
-- **[实体 2]**: [代表什么，关系]
+## 9. 待确认/假设
 
-## 成功标准
-
-### 可衡量的结果
-
-- **SC-001**: [可衡量的指标，包含具体数字/百分比]
-- **SC-002**: [可衡量的指标，包含具体数字/百分比]
-- **SC-003**: [用户满意度或业务指标]
-
-## 假设
-
-- [假设 1 - 应用的合理默认值]
-- [假设 2 - 应用的合理默认值]
-
-## 附录: 待确认事项
-
-> 以下事项已使用合理默认值处理，但可能需要您审核。
-> 如果假设与您的需求不符，请修改上述相关章节。
-
-### 1. [主题]
-
-**当前假设**: [本文档中所做的假设]
-
-**备选方案**:
-- 方案 A: [描述] — [影响]
-- 方案 B: [描述] — [影响]
-
-**如需修改请参阅**: [引用具体章节/需求]
-
----
-
-### 2. [主题]
-
-[继续列出其他待确认事项...]
+- [需要确认的问题或已做的合理假设]
 ```
 
 ---
 
 ## Section Requirements
 
-| Section                     | Required    | Notes                                                                                                           |
-| --------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
-| User Scenarios & Testing    | ✅ Mandatory | Must include at least one user story with acceptance scenarios                                                  |
-| Functional Requirements     | ✅ Mandatory | All requirements must be testable                                                                               |
-| Success Criteria            | ✅ Mandatory | Must be measurable and technology-agnostic                                                                      |
-| Key Entities                | Optional    | Include only when feature involves data                                                                         |
-| Assumptions                 | Optional    | Document reasonable defaults applied                                                                            |
-| Appendix: Points for Review | Optional    | Include only when there are critical decisions that may need user attention; limit to 3-5 most impactful points |
+| Section                | Required     | Notes                                              |
+| ---------------------- | ------------ | -------------------------------------------------- |
+| 功能背景               | ✅ Mandatory  | 说明痛点和适用范围                                  |
+| 功能概述               | ✅ Mandatory  | 一句话描述功能                                      |
+| 用户故事               | ✅ Mandatory  | 至少一个用户故事                                    |
+| 用户流程               | Optional     | 仅多步骤交互时使用                                  |
+| 功能需求               | ✅ Mandatory  | 使用表格形式                                        |
+| 验收场景               | ✅ Mandatory  | 使用 Given/When/Then 格式，包含边界情况              |
+| 异常处理               | ✅ Mandatory  | 场景-处理方式表格                                   |
+| 范围外                 | Optional     | 明确不做什么，避免范围蔓延                          |
+| 待确认/假设            | Optional     | 记录假设和待确认问题                                |
 
-**When a section doesn't apply, remove it entirely (don't leave as "N/A").**
+**章节不适用时直接移除，不要留 "N/A"。**
 
----
-
-## Appendix Guidelines
-
-The appendix serves as a "changelog for assumptions" — it highlights decisions the AI made that the user may want to reconsider:
-
-1. **Only include high-impact decisions**
-   - Feature scope and boundaries
-   - User types and permissions
-   - Security/compliance implications
-   - Core user experience choices
-
-2. **Format for each item**
-   - What was assumed (the current choice in the document)
-   - Alternative options with implications
-   - Which section to modify if the user disagrees
-
-3. **Keep it actionable**
-   - User should be able to directly edit the main document
-   - Each appendix item should reference specific sections/requirements
-
-4. **Limit to 3-5 items maximum**
-   - Prioritize by impact: scope > security > UX > technical details
-   - Don't list obvious or low-impact decisions

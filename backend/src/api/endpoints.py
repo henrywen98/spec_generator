@@ -36,24 +36,17 @@ async def generate_spec(
 ):
     if request.session_id:
         logger.info("generate request session_id=%s mode=%s", request.session_id, request.mode)
-    if request.mode == "suggest":
-        # Suggest mode: lightweight modification discussion
+
+    if request.mode == "chat":
+        # Chat mode: discuss or modify existing PRD
         if not request.current_prd:
-            raise HTTPException(status_code=400, detail="current_prd is required for suggest mode")
-        generator = llm_service.generate_suggestions_stream(
+            raise HTTPException(status_code=400, detail="current_prd is required for chat mode")
+        generator = llm_service.chat_stream(
             current_prd=request.current_prd,
-            user_feedback=request.description
-        )
-    elif request.mode == "regenerate":
-        # Regenerate mode: create new version with modifications
-        if not request.current_prd:
-            raise HTTPException(status_code=400, detail="current_prd is required for regenerate mode")
-        generator = llm_service.regenerate_stream(
-            current_prd=request.current_prd,
-            modifications=request.description
+            user_message=request.description
         )
     else:
-        # Generate mode (default): initial PRD
+        # Generate mode (default): create PRD from scratch
         generator = llm_service.generate_stream(request.description)
 
     if request.stream:

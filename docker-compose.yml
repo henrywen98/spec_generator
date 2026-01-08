@@ -6,14 +6,12 @@ services:
     volumes:
       - ./backend/src:/app/src
       - ./prompts/prompt.md:/app/prompts/prompt.md:ro
-      - ./prompts/prompt-edit.md:/app/prompts/prompt-edit.md:ro
-      - ./prompts/prompt-suggestions.md:/app/prompts/prompt-suggestions.md:ro
+      - ./prompts/prompt-chat.md:/app/prompts/prompt-chat.md:ro
     environment:
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
       - ENABLE_THINKING=${ENABLE_THINKING}
       - PROMPT_FILE_PATH=/app/prompts/prompt.md
-      - PROMPT_EDIT_FILE_PATH=/app/prompts/prompt-edit.md
-      - PROMPT_SUGGESTIONS_FILE_PATH=/app/prompts/prompt-suggestions.md
+      - PROMPT_CHAT_FILE_PATH=/app/prompts/prompt-chat.md
       - UVICORN_RELOAD=1
 
   frontend:

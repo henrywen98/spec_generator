@@ -4,7 +4,7 @@ import dashscope
 from http import HTTPStatus
 from typing import Generator
 from dashscope.api_entities.dashscope_response import Message
-from src.core.prompt_loader import get_prompt_loader, get_edit_prompt_loader, get_suggestions_prompt_loader
+from src.core.prompt_loader import get_prompt_loader, get_chat_prompt_loader
 
 class LLMService:
     def __init__(self):
@@ -16,8 +16,7 @@ class LLMService:
         self.enable_thinking = os.getenv("ENABLE_THINKING", "false").lower() in ("1", "true", "yes")
         self.debug_errors = os.getenv("DEBUG_ERRORS", "false").lower() in ("1", "true", "yes")
         self.prompt_loader = get_prompt_loader()
-        self.edit_prompt_loader = get_edit_prompt_loader()
-        self.suggestions_prompt_loader = get_suggestions_prompt_loader()
+        self.chat_prompt_loader = get_chat_prompt_loader()
 
     def _emit_event(self, event: dict) -> str:
         return json.dumps(event, ensure_ascii=True) + "\n"
@@ -81,38 +80,20 @@ class LLMService:
         ]
         yield from self._stream_response(messages)
 
-    def generate_suggestions_stream(self, current_prd: str, user_feedback: str) -> Generator[str, None, None]:
-        """Generate modification suggestions (lightweight discussion)."""
-        system_prompt = self.suggestions_prompt_loader.load_prompt()
-        user_message = f"""## 当前 PRD
+    def chat_stream(self, current_prd: str, user_message: str) -> Generator[str, None, None]:
+        """Chat about existing PRD - LLM decides whether to give suggestions or full document."""
+        system_prompt = self.chat_prompt_loader.load_prompt()
+        full_message = f"""## 当前 PRD
 
 {current_prd}
 
 ---
 
-## 用户意见
+## 用户消息
 
-{user_feedback}"""
+{user_message}"""
         messages: list[Message] = [
             Message(role='system', content=system_prompt),
-            Message(role='user', content=user_message)
-        ]
-        yield from self._stream_response(messages)
-
-    def regenerate_stream(self, current_prd: str, modifications: str) -> Generator[str, None, None]:
-        """Regenerate complete PRD with modifications applied."""
-        system_prompt = self.edit_prompt_loader.load_prompt()
-        user_message = f"""## 当前 PRD 全文
-
-{current_prd}
-
----
-
-## 需要整合的修改
-
-{modifications}"""
-        messages: list[Message] = [
-            Message(role='system', content=system_prompt),
-            Message(role='user', content=user_message)
+            Message(role='user', content=full_message)
         ]
         yield from self._stream_response(messages)

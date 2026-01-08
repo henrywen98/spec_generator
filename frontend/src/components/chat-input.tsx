@@ -59,7 +59,7 @@ export default function ChatInput({
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
                         rows={1}
-                        className="flex-1 resize-none bg-transparent px-3 py-2 text-sm focus:outline-none placeholder-gray-400 disabled:opacity-50 max-h-48"
+                        className="flex-1 resize-none bg-transparent px-3 py-2 text-sm text-gray-900 focus:outline-none placeholder-gray-400 disabled:opacity-50 max-h-48"
                     />
                     <button
                         onClick={handleSubmit}

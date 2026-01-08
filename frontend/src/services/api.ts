@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+// 使用相对路径，由 Next.js rewrites 代理到后端
+const API_BASE_URL = '/api/v1';
 
 export type GenerationMode = 'generate' | 'suggest' | 'regenerate';
 

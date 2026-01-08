@@ -2,7 +2,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "28000:8000"
     volumes:
       - ./backend/src:/app/src
       - ./prompts/prompt.md:/app/prompts/prompt.md:ro
@@ -10,6 +10,7 @@ services:
       - ./prompts/prompt-suggestions.md:/app/prompts/prompt-suggestions.md:ro
     environment:
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - ENABLE_THINKING=${ENABLE_THINKING}
       - PROMPT_FILE_PATH=/app/prompts/prompt.md
       - PROMPT_EDIT_FILE_PATH=/app/prompts/prompt-edit.md
       - PROMPT_SUGGESTIONS_FILE_PATH=/app/prompts/prompt-suggestions.md
@@ -18,9 +19,12 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - "23456:3000"
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000/api/v1
+      # Next.js rewrites 使用此变量代理到后端（容器网络）
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend

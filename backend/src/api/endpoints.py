@@ -1,28 +1,63 @@
+import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from src.models.schemas import GenerationRequest
 from src.services.llm_service import LLMService
 
 router = APIRouter()
+logger = logging.getLogger("uvicorn.error")
 
 def get_llm_service():
     return LLMService()
+
+def _collect_stream_content(chunks) -> str:
+    content_parts: list[str] = []
+    for chunk in chunks:
+        for line in chunk.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            event_type = event.get("type")
+            if event_type == "content":
+                content_parts.append(event.get("content", ""))
+            elif event_type == "error":
+                raise HTTPException(status_code=502, detail="Upstream model error")
+    return "".join(content_parts)
 
 @router.post("/generate")
 async def generate_spec(
     request: GenerationRequest,
     llm_service: LLMService = Depends(get_llm_service)
 ):
-    try:
-        # We enforce streaming for this MVP based on plan
-        if not request.stream:
-             # Fallback to blocking if needed, but for now user story emphasizes instant/streaming
-             # Assuming stream=True logic for simplicity as per requirement FR-006 implied (visual preview)
-             pass
-        
-        return StreamingResponse(
-            llm_service.generate_stream(request.description),
-            media_type="text/plain"
+    if request.session_id:
+        logger.info("generate request session_id=%s mode=%s", request.session_id, request.mode)
+    if request.mode == "suggest":
+        # Suggest mode: lightweight modification discussion
+        if not request.current_prd:
+            raise HTTPException(status_code=400, detail="current_prd is required for suggest mode")
+        generator = llm_service.generate_suggestions_stream(
+            current_prd=request.current_prd,
+            user_feedback=request.description
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    elif request.mode == "regenerate":
+        # Regenerate mode: create new version with modifications
+        if not request.current_prd:
+            raise HTTPException(status_code=400, detail="current_prd is required for regenerate mode")
+        generator = llm_service.regenerate_stream(
+            current_prd=request.current_prd,
+            modifications=request.description
+        )
+    else:
+        # Generate mode (default): initial PRD
+        generator = llm_service.generate_stream(request.description)
+
+    if request.stream:
+        return StreamingResponse(generator, media_type="application/x-ndjson")
+
+    content = _collect_stream_content(generator)
+    return JSONResponse({"markdown_content": content})

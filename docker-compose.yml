@@ -5,10 +5,15 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/src:/app/src
-      - ./.claude/commands/speckit.specify.md:/app/speckit.specify.md:ro
+      - ./prompts/prompt.md:/app/prompts/prompt.md:ro
+      - ./prompts/prompt-edit.md:/app/prompts/prompt-edit.md:ro
+      - ./prompts/prompt-suggestions.md:/app/prompts/prompt-suggestions.md:ro
     environment:
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
-      - PROMPT_FILE_PATH=/app/speckit.specify.md
+      - PROMPT_FILE_PATH=/app/prompts/prompt.md
+      - PROMPT_EDIT_FILE_PATH=/app/prompts/prompt-edit.md
+      - PROMPT_SUGGESTIONS_FILE_PATH=/app/prompts/prompt-suggestions.md
+      - UVICORN_RELOAD=1
 
   frontend:
     build: ./frontend
@@ -18,4 +23,4 @@ services:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_API_URL=http://backend:8000/api/v1

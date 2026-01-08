@@ -7,8 +7,9 @@ import pytest
 client = TestClient(app)
 
 def mock_generate_stream(description: str):
-    yield "Chunk 1"
-    yield "Chunk 2"
+    yield '{"type":"content","content":"Chunk 1"}\n'
+    yield '{"type":"content","content":"Chunk 2"}\n'
+    yield '{"type":"usage","input_tokens":1,"output_tokens":2,"total_tokens":3}\n'
 
 @pytest.fixture
 def mock_llm_service():
@@ -33,6 +34,7 @@ def test_generate_spec_streaming(mock_llm_service):
     assert response.status_code == 200
     # Consuming the streaming response
     content = response.text
+    assert '"type":"content"' in content
     assert "Chunk 1" in content
     assert "Chunk 2" in content
     
@@ -43,3 +45,81 @@ def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+def test_generate_spec_non_streaming(mock_llm_service):
+    from src.api.endpoints import get_llm_service
+    app.dependency_overrides[get_llm_service] = lambda: mock_llm_service
+
+    response = client.post(
+        "/api/v1/generate",
+        json={"description": "Test feature", "stream": False}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["markdown_content"] == "Chunk 1Chunk 2"
+
+    app.dependency_overrides = {}
+
+def test_suggest_requires_current_prd():
+    response = client.post(
+        "/api/v1/generate",
+        json={"description": "Give me suggestions", "stream": True, "mode": "suggest"}
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "current_prd is required for suggest mode"
+
+def test_regenerate_requires_current_prd():
+    response = client.post(
+        "/api/v1/generate",
+        json={"description": "Regenerate", "stream": True, "mode": "regenerate"}
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "current_prd is required for regenerate mode"
+
+def test_suggest_streaming(mock_llm_service):
+    mock_llm_service.generate_suggestions_stream.side_effect = lambda current_prd, user_feedback: iter([
+        '{"type":"content","content":"Suggestion 1"}\n'
+    ])
+
+    from src.api.endpoints import get_llm_service
+    app.dependency_overrides[get_llm_service] = lambda: mock_llm_service
+
+    response = client.post(
+        "/api/v1/generate",
+        json={
+            "description": "Please improve",
+            "stream": True,
+            "mode": "suggest",
+            "current_prd": "Current doc"
+        }
+    )
+
+    assert response.status_code == 200
+    assert "Suggestion 1" in response.text
+
+    app.dependency_overrides = {}
+
+def test_regenerate_streaming(mock_llm_service):
+    mock_llm_service.regenerate_stream.side_effect = lambda current_prd, modifications: iter([
+        '{"type":"content","content":"New PRD"}\n'
+    ])
+
+    from src.api.endpoints import get_llm_service
+    app.dependency_overrides[get_llm_service] = lambda: mock_llm_service
+
+    response = client.post(
+        "/api/v1/generate",
+        json={
+            "description": "Apply changes",
+            "stream": True,
+            "mode": "regenerate",
+            "current_prd": "Current doc"
+        }
+    )
+
+    assert response.status_code == 200
+    assert "New PRD" in response.text
+
+    app.dependency_overrides = {}

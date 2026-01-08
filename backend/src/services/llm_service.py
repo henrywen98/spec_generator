@@ -4,7 +4,10 @@ import dashscope
 from http import HTTPStatus
 from typing import Generator
 from dashscope.api_entities.dashscope_response import Message
+
 from src.core.prompt_loader import get_prompt_loader, get_chat_prompt_loader
+from src.models.schemas import ChatMessage
+
 
 class LLMService:
     def __init__(self):
@@ -13,7 +16,7 @@ class LLMService:
             raise ValueError("DASHSCOPE_API_KEY environment variable is not set")
         dashscope.api_key = self.api_key
         self.model = os.getenv("DASHSCOPE_MODEL", "deepseek-v3.2")
-        self.enable_thinking = os.getenv("ENABLE_THINKING", "false").lower() in ("1", "true", "yes")
+        self.enable_thinking = os.getenv("ENABLE_THINKING", "true").lower() in ("1", "true", "yes")
         self.debug_errors = os.getenv("DEBUG_ERRORS", "false").lower() in ("1", "true", "yes")
         self.prompt_loader = get_prompt_loader()
         self.chat_prompt_loader = get_chat_prompt_loader()
@@ -22,7 +25,7 @@ class LLMService:
         return json.dumps(event, ensure_ascii=True) + "\n"
 
     def _stream_response(self, messages: list[Message]) -> Generator[str, None, None]:
-        """Common streaming logic."""
+        """Common streaming logic with DashScope SDK."""
         try:
             responses = dashscope.Generation.call(
                 model=self.model,
@@ -51,14 +54,14 @@ class LLMService:
                         if reasoning_content:
                             yield self._emit_event({"type": "reasoning", "content": reasoning_content})
                     except (KeyError, AttributeError):
-                        pass  # No reasoning content available
+                        pass
                     content = message.content
                     if content:
                         assert isinstance(content, str)
                         yield self._emit_event({"type": "content", "content": content})
             else:
-                message = response.message if self.debug_errors else "Upstream model error"
-                yield self._emit_event({"type": "error", "message": message, "code": response.code})
+                error_msg = response.message if self.debug_errors else "Upstream model error"
+                yield self._emit_event({"type": "error", "message": error_msg, "code": response.code})
 
         if last_response and hasattr(last_response, "usage") and last_response.usage:
             usage = last_response.usage
@@ -71,29 +74,60 @@ class LLMService:
                 "total_tokens": input_tokens + output_tokens,
             })
 
+    def _build_chat_messages(
+        self,
+        system_prompt: str,
+        current_prd: str,
+        user_message: str,
+        chat_history: list[ChatMessage] | None = None,
+    ) -> list[Message]:
+        """
+        按规格 FR-008 构建消息列表：
+        1. SystemMessage: prompt-chat.md 内容
+        2. HumanMessage: 当前 PRD 全文
+        3. AIMessage: 确认消息
+        4. 对话历史（交替的 user/assistant）
+        5. HumanMessage: 用户最新消息
+        """
+        messages: list[Message] = [
+            Message(role="system", content=system_prompt),
+            Message(role="user", content=f"## 当前 PRD\n\n{current_prd}"),
+            Message(role="assistant", content="好的，我已了解当前 PRD 内容，请告诉我你的想法或问题。"),
+        ]
+
+        if chat_history:
+            for msg in chat_history:
+                messages.append(Message(role=msg.role, content=msg.content))
+
+        messages.append(Message(role="user", content=user_message))
+
+        return messages
+
     def generate_stream(self, user_description: str) -> Generator[str, None, None]:
         """Generate a new PRD from scratch."""
         system_prompt = self.prompt_loader.load_prompt()
         messages: list[Message] = [
-            Message(role='system', content=system_prompt),
-            Message(role='user', content=user_description)
+            Message(role="system", content=system_prompt),
+            Message(role="user", content=user_description)
         ]
         yield from self._stream_response(messages)
 
-    def chat_stream(self, current_prd: str, user_message: str) -> Generator[str, None, None]:
-        """Chat about existing PRD - LLM decides whether to give suggestions or full document."""
+    def chat_stream(
+        self,
+        current_prd: str,
+        user_message: str,
+        chat_history: list[ChatMessage] | None = None,
+    ) -> Generator[str, None, None]:
+        """
+        Chat about existing PRD with optional chat history.
+        FR-008: 消息顺序为 PRD 第一位 → 历史 → 最新消息
+        FR-009: current_prd 参数接收新版本时自动使用新 PRD
+        """
         system_prompt = self.chat_prompt_loader.load_prompt()
-        full_message = f"""## 当前 PRD
-
-{current_prd}
-
----
-
-## 用户消息
-
-{user_message}"""
-        messages: list[Message] = [
-            Message(role='system', content=system_prompt),
-            Message(role='user', content=full_message)
-        ]
+        messages = self._build_chat_messages(
+            system_prompt=system_prompt,
+            current_prd=current_prd,
+            user_message=user_message,
+            chat_history=chat_history,
+        )
         yield from self._stream_response(messages)

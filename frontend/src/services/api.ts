@@ -3,9 +3,15 @@ const API_BASE_URL = '/api/v1';
 
 export type GenerationMode = 'generate' | 'chat';
 
+export interface ChatHistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface GenerateOptions {
   mode?: GenerationMode;
   currentPrd?: string;
+  chatHistory?: ChatHistoryMessage[];
   sessionId?: string;
   stream?: boolean;
   signal?: AbortSignal;
@@ -21,7 +27,7 @@ export async function generateSpecStream(
   onAbort?: () => void
 ) {
   try {
-    const { mode = 'generate', currentPrd, sessionId, stream = true, signal } = options;
+    const { mode = 'generate', currentPrd, chatHistory, sessionId, stream = true, signal } = options;
 
     const response = await fetch(`${API_BASE_URL}/generate`, {
       method: 'POST',
@@ -34,6 +40,7 @@ export async function generateSpecStream(
         stream,
         mode,
         current_prd: currentPrd,
+        chat_history: chatHistory,
         session_id: sessionId,
       }),
     });

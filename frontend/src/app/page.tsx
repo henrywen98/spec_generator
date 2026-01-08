@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ChatMessage from '@/components/chat-message';
 import ChatInput from '@/components/chat-input';
-import { generateSpecStream, GenerationMode } from '@/services/api';
+import { generateSpecStream, GenerationMode, ChatHistoryMessage } from '@/services/api';
 import { useStreamParser, TokenUsage } from '@/hooks/useStreamParser';
 import { ArrowDown } from 'lucide-react';
 
@@ -16,6 +16,35 @@ interface Message {
   reasoningContent?: string;
   isStreaming?: boolean;
   promptSource?: string; // e.g., "@prompts/prompt.md", "@prompts/prompt-suggestions.md"
+}
+
+/**
+ * 过滤消息，排除不应传递给 LLM 的消息：
+ * - 错误消息（以 ❌ 开头）
+ * - 中断消息（⏹️ 已停止生成）
+ * - 完整 PRD 消息（有 version 标记）
+ * - 正在流式输出的消息
+ */
+function isValidHistoryMessage(msg: Message): boolean {
+  if (msg.isStreaming) return false;
+  if (msg.version !== undefined) return false;
+  if (msg.content.startsWith('❌')) return false;
+  if (msg.content === '⏹️ 已停止生成') return false;
+  return true;
+}
+
+/**
+ * 获取最近 2 轮对话历史（最多 4 条消息）
+ * 按规格 FR-001 实现
+ */
+function getChatHistory(messages: Message[]): ChatHistoryMessage[] {
+  const validMessages = messages.filter(isValidHistoryMessage);
+  // 取最近 4 条消息（2 轮对话）
+  const recentMessages = validMessages.slice(-4);
+  return recentMessages.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+  }));
 }
 
 export default function Home() {
@@ -146,9 +175,14 @@ export default function Home() {
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
+    // 获取对话历史（仅在 chat 模式下传递）
+    const chatHistory = isInitialGeneration ? undefined : getChatHistory(messages);
+
     const options = {
       mode,
       currentPrd: isInitialGeneration ? undefined : currentPrd,
+      chatHistory,
       sessionId,
       signal: controller.signal,
     };

@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { Copy, Check, ChevronDown, ChevronUp, Brain } from 'lucide-react';
 import { TokenUsage } from '@/hooks/useStreamParser';
+import { useExport } from '@/hooks/use-export';
 
 interface ChatMessageProps {
     role: 'user' | 'assistant';
@@ -27,18 +29,17 @@ export default function ChatMessage({
 }: ChatMessageProps) {
     const [copied, setCopied] = useState(false);
     const [showReasoning, setShowReasoning] = useState(false);
+    const { status: exportStatus, copyToClipboard, error: copyError } = useExport();
 
     // During streaming, check if we're still in "reasoning" phase (no main content yet)
     const isReasoningPhase = isStreaming && reasoningContent && !content;
     const hasContent = content && content.trim().length > 0;
 
     const handleCopy = async () => {
-        try {
-            await navigator.clipboard.writeText(content);
+        const success = await copyToClipboard(content);
+        if (success) {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error('Failed to copy:', err);
         }
     };
 
@@ -120,7 +121,7 @@ export default function ChatMessage({
                     <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-md shadow-sm overflow-hidden">
                         <div className="p-4 prose prose-sm max-w-none min-h-[60px]">
                             {hasContent ? (
-                                <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+                                <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{content}</Markdown>
                             ) : (
                                 <div className="text-gray-400 text-sm">等待生成...</div>
                             )}
@@ -129,13 +130,32 @@ export default function ChatMessage({
                         {/* Actions */}
                         {hasContent && !isStreaming && (
                             <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t border-gray-100">
-                                <button
-                                    onClick={handleCopy}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-                                >
-                                    {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
-                                    {copied ? '已复制' : '复制'}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {/* Copy button with accessibility */}
+                                    <button
+                                        onClick={handleCopy}
+                                        disabled={exportStatus === 'generating'}
+                                        aria-label="复制内容到剪贴板"
+                                        aria-busy={exportStatus === 'generating'}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                                    >
+                                        {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                                        {copied ? '已复制' : '复制'}
+                                    </button>
+
+                                    {/* Error message display */}
+                                    {copyError && (
+                                        <span className="text-xs text-red-600" role="alert" aria-live="polite">
+                                            {copyError}
+                                        </span>
+                                    )}
+
+                                    {/* Screen reader announcement */}
+                                    <span className="sr-only" aria-live="polite" role="status">
+                                        {exportStatus === 'generating' && '正在复制...'}
+                                        {copied && '内容已复制到剪贴板'}
+                                    </span>
+                                </div>
 
                                 {tokenUsage && (
                                     <div className="flex items-center gap-4 text-xs text-gray-500">

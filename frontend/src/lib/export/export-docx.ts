@@ -4,7 +4,7 @@
  */
 
 import type { DOCXOptions, ExportResult } from '@/types/export';
-import { generateExportFilename, createExportResult } from '@/utils/file';
+import { generateExportFilename, createExportBlob } from '@/utils/file';
 import { parseMarkdownTokens, stripMarkdown, type ParsedToken } from './markdown-parser';
 import {
   Document,
@@ -21,17 +21,17 @@ import {
 } from 'docx';
 
 /**
- * Export markdown content to DOCX
+ * Export markdown content to DOCX (returns blob without triggering download)
  * @param content - Markdown content to export
  * @param version - PRD version number
  * @param options - DOCX export options
- * @returns Promise<ExportResult>
+ * @returns Promise with blob metadata (caller should trigger download)
  */
 export async function exportToDOCX(
   content: string,
   version: number,
   options: DOCXOptions = {}
-): Promise<ExportResult> {
+): Promise<Omit<ExportResult, 'url'>> {
   const startTime = Date.now();
 
   const font = options.font || 'Microsoft YaHei';
@@ -73,7 +73,7 @@ export async function exportToDOCX(
   const blob = await Packer.toBlob(doc);
   const filename = options.filename || generateExportFilename('prd', version, 'docx');
 
-  return createExportResult(
+  return createExportBlob(
     blob,
     filename,
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

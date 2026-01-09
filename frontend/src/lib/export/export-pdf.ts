@@ -4,21 +4,21 @@
  */
 
 import type { PDFOptions, ExportResult } from '@/types/export';
-import { generateExportFilename, createExportResult } from '@/utils/file';
+import { generateExportFilename, createExportBlob } from '@/utils/file';
 import { marked } from 'marked';
 
 /**
- * Export markdown content to PDF
+ * Export markdown content to PDF (returns blob without triggering download)
  * @param content - Markdown content to export
  * @param version - PRD version number
  * @param options - PDF export options
- * @returns Promise<ExportResult>
+ * @returns Promise with blob metadata (caller should trigger download)
  */
 export async function exportToPDF(
   content: string,
   version: number,
   options: PDFOptions = {}
-): Promise<ExportResult> {
+): Promise<Omit<ExportResult, 'url'>> {
   const startTime = Date.now();
 
   // Dynamic import for html2pdf.js (reduces initial bundle size)
@@ -63,7 +63,7 @@ export async function exportToPDF(
     };
 
     // Generate PDF blob
-    const exportSource = container.firstElementChild ?? container;
+    const exportSource = (container.firstElementChild ?? container) as HTMLElement;
     const blob = await html2pdf()
       .set(pdfOptions)
       .from(exportSource)
@@ -71,7 +71,7 @@ export async function exportToPDF(
 
     const filename = pdfOptions.filename;
 
-    return createExportResult(
+    return createExportBlob(
       blob as Blob,
       filename,
       'application/pdf',

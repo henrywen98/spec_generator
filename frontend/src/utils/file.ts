@@ -49,7 +49,26 @@ export function cleanupDownload(url: string): void {
 }
 
 /**
- * Create export result object
+ * Create export blob metadata without triggering download
+ * Use this when you need to check cancellation before downloading
+ */
+export function createExportBlob(
+  blob: Blob,
+  filename: string,
+  mimeType: string,
+  startTime: number
+): Omit<ExportResult, 'url'> {
+  return {
+    blob,
+    filename,
+    size: blob.size,
+    mimeType,
+    duration: Date.now() - startTime,
+  };
+}
+
+/**
+ * Create export result object and trigger download
  */
 export function createExportResult(
   blob: Blob,

@@ -7,6 +7,7 @@ import { useState, useCallback, useRef } from 'react';
 import type { ExportStatus, PDFOptions, DOCXOptions, ExportResult } from '@/types/export';
 import { copyToClipboard } from '@/lib/export/export-copy';
 import { getDocumentSizeInfo } from '@/utils/validation';
+import { triggerDownload } from '@/utils/file';
 
 export interface UseExportResult {
   /** Current export status */
@@ -97,9 +98,25 @@ export function useExport(): UseExportResult {
       setStatus('finalizing');
       setProgress(95);
 
-      const result = await exportPDFService(content, version, options);
+      const blobResult = await exportPDFService(content, version, options);
 
       clearInterval(progressInterval);
+
+      // Check if cancelled after service completes (before triggering download)
+      if (abortControllerRef.current?.signal.aborted) {
+        setStatus('cancelled');
+        setTimeout(() => {
+          setStatus('idle');
+          setProgress(0);
+          setCurrentFormat(null);
+        }, 1000);
+        return null;
+      }
+
+      // Trigger download only if not cancelled
+      const url = triggerDownload(blobResult.blob, blobResult.filename);
+      const result: ExportResult = { ...blobResult, url };
+
       setProgress(100);
       setStatus('success');
 
@@ -165,9 +182,25 @@ export function useExport(): UseExportResult {
       setStatus('finalizing');
       setProgress(95);
 
-      const result = await exportDOCXService(content, version, options);
+      const blobResult = await exportDOCXService(content, version, options);
 
       clearInterval(progressInterval);
+
+      // Check if cancelled after service completes (before triggering download)
+      if (abortControllerRef.current?.signal.aborted) {
+        setStatus('cancelled');
+        setTimeout(() => {
+          setStatus('idle');
+          setProgress(0);
+          setCurrentFormat(null);
+        }, 1000);
+        return null;
+      }
+
+      // Trigger download only if not cancelled
+      const url = triggerDownload(blobResult.blob, blobResult.filename);
+      const result: ExportResult = { ...blobResult, url };
+
       setProgress(100);
       setStatus('success');
 

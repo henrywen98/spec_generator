@@ -7,7 +7,7 @@ import pytest
 client = TestClient(app)
 
 def mock_generate_stream_clarification(description: str):
-    yield "## Requirements\n\n- [NEEDS CLARIFICATION: What is the user role?]"
+    yield '{"type":"content","content":"## Requirements\\n\\n- [NEEDS CLARIFICATION: What is the user role?]"}\n'
 
 @pytest.fixture
 def mock_llm_service_clarification():

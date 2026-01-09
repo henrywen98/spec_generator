@@ -1,72 +1,92 @@
-import { useState, useRef, useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-type StreamParserState = 'idle' | 'reasoning';
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
 
 interface UseStreamParserResult {
   reasoningContent: string;
   markdownContent: string;
+  tokenUsage: TokenUsage | null;
+  isFullPrd: boolean | null;
   parseChunk: (chunk: string) => void;
   reset: () => void;
 }
 
-const START_MARKER = '<!--REASONING_START-->';
-const END_MARKER = '<!--REASONING_END-->';
+const LINE_BREAK = '\n';
 
 export function useStreamParser(): UseStreamParserResult {
   const [reasoningContent, setReasoningContent] = useState('');
   const [markdownContent, setMarkdownContent] = useState('');
-  const stateRef = useRef<StreamParserState>('idle');
+  const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
+  const [isFullPrd, setIsFullPrd] = useState<boolean | null>(null);
   const bufferRef = useRef('');
 
   const reset = useCallback(() => {
     setReasoningContent('');
     setMarkdownContent('');
-    stateRef.current = 'idle';
+    setTokenUsage(null);
+    setIsFullPrd(null);
     bufferRef.current = '';
   }, []);
 
   const parseChunk = useCallback((chunk: string) => {
     bufferRef.current += chunk;
 
-    while (bufferRef.current.length > 0) {
-      const buffer = bufferRef.current;
-      const state = stateRef.current;
+    while (true) {
+      const newlineIndex = bufferRef.current.indexOf(LINE_BREAK);
+      if (newlineIndex === -1) {
+        return;
+      }
+      const line = bufferRef.current.slice(0, newlineIndex).trim();
+      bufferRef.current = bufferRef.current.slice(newlineIndex + 1);
 
-      if (state === 'reasoning') {
-        const endIdx = buffer.indexOf(END_MARKER);
-        if (endIdx !== -1) {
-          setReasoningContent(prev => prev + buffer.slice(0, endIdx));
-          bufferRef.current = buffer.slice(endIdx + END_MARKER.length);
-          stateRef.current = 'idle';
-        } else {
-          // Check for partial END marker - wait for more chunks
-          if (buffer.includes('<!--REASONING_EN')) {
-            return;
-          }
-          // No END marker yet, keep buffering
-          return;
+      if (!line) {
+        continue;
+      }
+
+      try {
+        const event = JSON.parse(line) as { type?: string; [key: string]: unknown };
+        switch (event.type) {
+          case 'content':
+            if (typeof event.content === 'string') {
+              setMarkdownContent(prev => prev + event.content);
+            }
+            break;
+          case 'reasoning':
+            if (typeof event.content === 'string') {
+              setReasoningContent(prev => prev + event.content);
+            }
+            break;
+          case 'usage':
+            setTokenUsage({
+              inputTokens: Number(event.input_tokens ?? 0),
+              outputTokens: Number(event.output_tokens ?? 0),
+              totalTokens: Number(event.total_tokens ?? 0),
+            });
+            break;
+          case 'metadata':
+            if (typeof event.is_full_prd === 'boolean') {
+              setIsFullPrd(event.is_full_prd);
+            }
+            break;
+          case 'error':
+            if (typeof event.message === 'string') {
+              setMarkdownContent(prev => `${prev}\n\n❌ ${event.message}`);
+            } else {
+              setMarkdownContent(prev => `${prev}\n\n❌ 请求失败`);
+            }
+            break;
+          default:
+            break;
         }
-      } else {
-        const startIdx = buffer.indexOf(START_MARKER);
-        if (startIdx !== -1) {
-          if (startIdx > 0) {
-            setMarkdownContent(prev => prev + buffer.slice(0, startIdx));
-          }
-          bufferRef.current = buffer.slice(startIdx + START_MARKER.length);
-          stateRef.current = 'reasoning';
-        } else {
-          // Check for partial START marker
-          if (buffer.includes('<!--REASONING_STA')) {
-            return;
-          }
-          // No START marker, all markdown
-          setMarkdownContent(prev => prev + buffer);
-          bufferRef.current = '';
-          break;
-        }
+      } catch {
+        // Skip malformed lines.
       }
     }
   }, []);
 
-  return { reasoningContent, markdownContent, parseChunk, reset };
+  return { reasoningContent, markdownContent, tokenUsage, isFullPrd, parseChunk, reset };
 }

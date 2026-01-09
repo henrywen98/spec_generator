@@ -1,26 +1,25 @@
 <!--
 SYNC IMPACT REPORT
-Version: 0.0.0 -> 1.0.0
-Type: Major (Initial Ratification & Strict Standards)
+Version: 1.0.0 -> 1.1.0
+Type: Minor (Section removal, principle additions, Code Style expansion)
 
 Modified Principles:
-- Added "Monorepo" (Single repo, explicit deps)
-- Added "SSOT" (DTO/Schema driven)
-- Added "Code-first API" (No manual JSON)
-- Added "Layered Architecture" (Clear boundaries)
-- Added "Language Specification" (Mandatory Simplified Chinese for specs/tasks)
-- Added "Frontend/Backend Separation" (UI vs Business Logic)
-- Added "Code Style" (PEP 8, React Hooks)
-- Added "Test Strategy" (Integration > E2E/Unit)
-- Added "Path Conventions" (Relative paths default)
-- Added "MCP & GLM Rules" (Context7, Web Search, Visual constraints)
-- Added "Design Standards" (Skills frontend-design, database-design)
-- Added "Containerized Testing" (Docker environment)
+- "Code Style" expanded: Added TypeScript strict mode + any prohibition; Added mandatory linter/formatter check before commit
 
-Templates Impact (⚠ Pending Manual Review for Language Compliance):
-- .specify/templates/plan-template.md: "Constitution Check" now refers to these new strict gates.
-- .specify/templates/spec-template.md: Content filled here MUST now be in Simplified Chinese.
-- .specify/templates/tasks-template.md: Task descriptions MUST now be in Simplified Chinese.
+Added Sections:
+- "变更影响追踪" (Sync Map tracking for cross-module dependencies)
+
+Removed Sections:
+- "GLM Guidelines" (视觉理解, 联网搜索, 网页内容提取)
+- "Environment & Testing > 容器化测试"
+
+Templates Impact:
+- .specify/templates/plan-template.md: ✅ No update needed (Constitution Check reference remains valid)
+- .specify/templates/spec-template.md: ✅ No update needed (Language compliance unchanged)
+- .specify/templates/tasks-template.md: ✅ No update needed (Task format unchanged)
+
+Follow-up TODOs:
+- Create `.sync-map.md` at repository root per new "变更影响追踪" principle
 -->
 
 # Spec Generator Constitution
@@ -55,16 +54,18 @@ Templates Impact (⚠ Pending Manual Review for Language Compliance):
 - 前端仅负责表现层与交互层（UI 渲染、状态管理、API 调用）。
 - 前端不得包含业务规则、权限判断或数据可信校验。
 - 后端作为唯一业务事实来源（SSOT），必须承载：
-  - 业务逻辑  
-  - 规则校验  
-  - 权限控制  
+  - 业务逻辑
+  - 规则校验
+  - 权限控制
   - 数据持久化
 - 前后端仅通过契约化 API 交互。
 
 ### Code Style
 - Python 遵循 **PEP 8**。
+- TypeScript 启用 **strict 模式**，禁止 `any` 滥用。
 - JS / React 遵循标准 **React Hooks** 使用模式。
 - 项目内应保持一致的格式化与风格规范。
+- 提交前必须通过 linter / formatter 检查。
 
 ### 测试策略（设计层面）
 - 优先覆盖：
@@ -80,28 +81,18 @@ Templates Impact (⚠ Pending Manual Review for Language Compliance):
 - 业务代码与配置默认使用**相对路径**。
 - 如必须使用绝对路径（如容器挂载点、系统目录、工具链要求），必须在 SPEC 或配置中显式声明并说明原因。
 
-## MCP Guidelines
+### 变更影响追踪
+- 项目根目录应维护 `.sync-map.md`，显式记录配置与接口的依赖映射。
+- 修改配置、接口、Schema 后，必须查阅 `.sync-map.md` 并检查所有影响文件。
+- 新增跨模块依赖时，必须同步更新映射文件。
+
+## MCP
 
 ### MCP context7
 - 当输出依赖**具体库 / API / CLI 的精确行为、参数或版本差异**时，必须优先使用 **context7** 获取文档后再编写。
 - 若 context7 不可用，必须在输出中注明原因并采用降级方案。
 
-## GLM Guidelines
-
-### 视觉理解
-- 在可用时**仅使用** MCP `zai-mcp-server`。
-- 不可用时必须注明原因并降级。
-
-### 联网搜索
-- 在可用时**必须且仅使用** MCP `web-search-prime`。
-- 不可用时必须注明原因并降级。
-
-### 网页内容提取
-- 对已给 URL 的正文或结构化内容抽取：
-  - 在可用时**仅使用** MCP `web-reader`。
-  - 不可用时必须注明原因并降级。
-
-## Design Standards
+## 设计规范
 
 ### 前端设计
 - 前端 UI / UX 设计统一使用 Skills 的 **frontend-design**。
@@ -110,18 +101,10 @@ Templates Impact (⚠ Pending Manual Review for Language Compliance):
 - 数据库设计必须遵循 **database-design** 规范。
 - 所有表结构与字段设计需基于该规范实现，确保数据一致性、可扩展性与安全性。
 
-## Environment & Testing
-
-### 容器化测试
-- 自动化测试的标准执行环境为 **Docker**。
-- 测试基于仓库内提供的 `Dockerfile` / `docker-compose`。
-- 核心依赖（OS 包、运行时、Python / Node 版本）必须在镜像中显式声明并固定。
-- 测试镜像与运行镜像建议通过多阶段构建或 target 区分。
-
 ## Governance
 
 - **Supremacy**: This Constitution supersedes all other project documentation or practices.
 - **Compliance**: All Pull Requests, Plans, and Specifications must verify compliance with these principles.
 - **Amendments**: Changes to this document require a Pull Request with a "Sync Impact Report" and strict semantic versioning updates.
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-07 | **Last Amended**: 2026-01-07
+**Version**: 1.1.0 | **Ratified**: 2026-01-07 | **Last Amended**: 2026-01-08

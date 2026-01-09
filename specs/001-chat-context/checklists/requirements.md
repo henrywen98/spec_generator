@@ -1,8 +1,8 @@
-# Specification Quality Checklist: Specification Generator Web Application
+# Specification Quality Checklist: 多轮对话上下文
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-01-07
-**Feature**: [specs/001-spec-gen-web/spec.md](spec.md)
+**Created**: 2026-01-08
+**Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 
@@ -31,5 +31,6 @@
 
 ## Notes
 
-- The specification is ready for the planning phase.
-- All functional requirements are aligned with the single-turn conversation goal.
+- All validation items pass
+- Specification is ready for `/speckit.clarify` or `/speckit.plan`
+- User provided detailed design in input, which has been incorporated as assumptions

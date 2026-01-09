@@ -1,67 +1,343 @@
 'use client';
 
-import { useState } from 'react';
-import InputForm from '@/components/input-form';
-import MarkdownPreview from '@/components/markdown-preview';
-import { generateSpecStream } from '@/services/api';
-import { useStreamParser } from '@/hooks/useStreamParser';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import ChatMessage from '@/components/chat-message';
+import ChatInput from '@/components/chat-input';
+import { generateSpecStream, GenerationMode, ChatHistoryMessage } from '@/services/api';
+import { useStreamParser, TokenUsage } from '@/hooks/useStreamParser';
+import { ArrowDown } from 'lucide-react';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  version?: number;
+  tokenUsage?: TokenUsage | null;
+  reasoningContent?: string;
+  isStreaming?: boolean;
+  promptSource?: string; // e.g., "@prompts/prompt.md", "@prompts/prompt-suggestions.md"
+}
+
+/**
+ * 过滤消息，排除不应传递给 LLM 的消息：
+ * - 错误消息（以 ❌ 开头）
+ * - 中断消息（⏹️ 已停止生成）
+ * - 完整 PRD 消息（有 version 标记）
+ * - 正在流式输出的消息
+ */
+function isValidHistoryMessage(msg: Message): boolean {
+  if (msg.isStreaming) return false;
+  if (msg.version !== undefined) return false;
+  if (msg.content.startsWith('❌')) return false;
+  if (msg.content === '⏹️ 已停止生成') return false;
+  return true;
+}
+
+/**
+ * 获取最近 2 轮对话历史（最多 4 条消息）
+ * 按规格 FR-001 实现
+ */
+function getChatHistory(messages: Message[]): ChatHistoryMessage[] {
+  const validMessages = messages.filter(isValidHistoryMessage);
+  // 取最近 4 条消息（2 轮对话）
+  const recentMessages = validMessages.slice(-4);
+  return recentMessages.map(msg => ({
+    role: msg.role,
+    content: msg.content,
+  }));
+}
 
 export default function Home() {
-  const { reasoningContent, markdownContent, parseChunk, reset } = useStreamParser();
+  const { reasoningContent, markdownContent, tokenUsage, isFullPrd, parseChunk, reset } = useStreamParser();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const [versionCount, setVersionCount] = useState(0);
+  const versionCountRef = useRef(0); // 用于同步获取最新版本号，避免竞态条件
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleGenerate = async (description: string) => {
-    setIsLoading(true);
-    setError('');
-    reset();
+  const finalizeRequest = useCallback(() => {
+    setIsLoading(false);
+    abortControllerRef.current = null;
+  }, []);
 
-    await generateSpecStream(
-      description,
-      parseChunk,
-      (err) => {
-        setError(err);
-        setIsLoading(false);
-      },
-      () => {
-        setIsLoading(false);
+  const updateLastAssistant = useCallback((updater: (message: Message) => Message) => {
+    setMessages(prev => {
+      if (prev.length === 0) {
+        return prev;
       }
-    );
+      const updated = [...prev];
+      const lastIdx = updated.length - 1;
+      if (updated[lastIdx].role !== 'assistant') {
+        return prev;
+      }
+      updated[lastIdx] = updater(updated[lastIdx]);
+      return updated;
+    });
+  }, []);
+
+  // Check if user is near bottom
+  const checkScrollPosition = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+    }
+  }, []);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScrollPosition);
+      return () => container.removeEventListener('scroll', checkScrollPosition);
+    }
+  }, [checkScrollPosition]);
+
+  // Update the last assistant message with streaming content (no auto-scroll)
+  useEffect(() => {
+    if (isLoading && (markdownContent || reasoningContent)) {
+      updateLastAssistant(message => ({
+        ...message,
+        content: markdownContent,
+        reasoningContent,
+      }));
+    }
+  }, [markdownContent, reasoningContent, isLoading, updateLastAssistant]);
+
+  // Finalize message when streaming completes
+  useEffect(() => {
+    if (!isLoading && markdownContent && messages.length > 0) {
+      // 使用 updateLastAssistant 的 updater 函数来检查消息状态
+      // 这避免了将 messages 作为依赖项导致的无限循环
+      updateLastAssistant(message => {
+        // 检查是否为 chat 模式下的完整 PRD 输出（需要递增版本号）
+        const isChatModeFullPrd = message.role === 'assistant'
+          && message.version === undefined
+          && isFullPrd === true;
+
+        if (isChatModeFullPrd) {
+          // Chat 模式下输出了完整 PRD，使用 ref 同步递增版本号
+          versionCountRef.current += 1;
+          const newVersion = versionCountRef.current;
+          setVersionCount(newVersion);
+          return {
+            ...message,
+            content: markdownContent,
+            tokenUsage,
+            reasoningContent,
+            isStreaming: false,
+            version: newVersion,
+          };
+        } else {
+          return {
+            ...message,
+            content: markdownContent,
+            tokenUsage,
+            reasoningContent,
+            isStreaming: false,
+          };
+        }
+      });
+    }
+  }, [isLoading, markdownContent, tokenUsage, reasoningContent, isFullPrd, messages.length, updateLastAssistant]);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const getLatestPrd = useCallback(() => {
+    // Get the latest complete PRD (only from version messages)
+    const prdMessages = messages.filter(m => m.role === 'assistant' && m.version && !m.isStreaming);
+    return prdMessages.length > 0 ? prdMessages[prdMessages.length - 1].content : '';
+  }, [messages]);
+
+  const determineMode = useCallback((): { mode: GenerationMode } => {
+    // No PRD yet = generate mode, otherwise chat mode
+    // LLM will decide whether to give suggestions or full document based on user intent
+    return { mode: versionCount === 0 ? 'generate' : 'chat' };
+  }, [versionCount]);
+
+  const getPromptLabel = (mode: GenerationMode): string => {
+    return mode === 'generate' ? '🆕 初稿生成' : '💬 对话模式';
   };
 
+  const handleSend = useCallback(async (userInput: string) => {
+    setIsLoading(true);
+    reset();
+
+    const { mode } = determineMode();
+    const currentPrd = getLatestPrd();
+    const promptLabel = getPromptLabel(mode);
+    const isInitialGeneration = mode === 'generate';
+
+    // Add user message
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: userInput,
+    };
+
+    // Add placeholder assistant message
+    // For initial generation, always create a new version
+    // For chat mode, we'll update version later if LLM outputs a full PRD
+    let newVersion: number | undefined;
+    if (isInitialGeneration) {
+      versionCountRef.current += 1;
+      newVersion = versionCountRef.current;
+    }
+    const assistantMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: '',
+      version: newVersion,
+      isStreaming: true,
+      promptSource: promptLabel,
+    };
+
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    if (isInitialGeneration) {
+      setVersionCount(versionCountRef.current);
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // 获取对话历史（仅在 chat 模式下传递）
+    const chatHistory = isInitialGeneration ? undefined : getChatHistory(messages);
+
+    const options = {
+      mode,
+      currentPrd: isInitialGeneration ? undefined : currentPrd,
+      chatHistory,
+      sessionId,
+      signal: controller.signal,
+    };
+
+    await generateSpecStream(
+      userInput,
+      parseChunk,
+      (err) => {
+        updateLastAssistant(message => ({
+          ...message,
+          content: `❌ 错误: ${err}`,
+          isStreaming: false,
+          version: undefined,  // Clear version on error
+        }));
+        finalizeRequest();
+      },
+      () => {
+        finalizeRequest();
+      },
+      options,
+      () => {
+        finalizeRequest();
+        updateLastAssistant(message => {
+          const existing = message.content?.trim();
+          return {
+            ...message,
+            isStreaming: false,
+            content: existing ? message.content : '⏹️ 已停止生成',
+            version: undefined,  // Clear version on abort
+          };
+        });
+      }
+    );
+  }, [
+    versionCount,
+    sessionId,
+    parseChunk,
+    reset,
+    determineMode,
+    getLatestPrd,
+    finalizeRequest,
+    updateLastAssistant,
+  ]);
+
+  const handleStop = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
   return (
-    <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            Specification Generator
-          </h1>
-          <p className="mt-3 text-lg text-gray-500">
-            Describe your feature and let AI generate a standardized PRD for you.
-          </p>
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Header */}
+      <header className="flex-shrink-0 border-b border-gray-200 bg-white px-4 py-3">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">PRD Generator</h1>
+            <p className="text-sm text-gray-500">描述功能需求，AI 帮你生成产品规格文档</p>
+          </div>
+          {versionCount > 0 && (
+            <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
+              当前 v{versionCount}
+            </span>
+          )}
         </div>
+      </header>
 
-        <InputForm onSubmit={handleGenerate} isLoading={isLoading} />
-
-        {error && (
-          <div className="w-full max-w-2xl mx-auto p-4 bg-red-50 border border-red-200 rounded-md text-red-600">
-            Error: {error}
-          </div>
-        )}
-
-        {reasoningContent && (
-          <div className="w-full max-w-4xl mx-auto mt-8 border border-amber-200 rounded-lg shadow-sm bg-amber-50 overflow-hidden">
-            <div className="px-4 py-2 bg-amber-100 border-b border-amber-200">
-              <h2 className="text-sm font-semibold text-amber-800">思考过程</h2>
+      {/* Messages Area */}
+      <main
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-6"
+      >
+        <div className="max-w-4xl mx-auto">
+          {messages.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-5xl mb-4">📝</div>
+              <h2 className="text-xl font-semibold text-gray-700 mb-2">开始创建 PRD</h2>
+              <p className="text-gray-500 max-w-md mx-auto">
+                在下方输入您的功能需求描述，AI 将为您生成标准化的产品需求文档。
+              </p>
+              <div className="mt-6 text-sm text-gray-400 space-y-1">
+                <p>💡 生成后可继续对话，AI 会自动判断是给建议还是直接修改</p>
+              </div>
             </div>
-            <div className="p-6 prose prose-amber max-w-none text-sm">
-              <pre className="whitespace-pre-wrap font-mono text-amber-900">{reasoningContent}</pre>
-            </div>
-          </div>
-        )}
+          ) : (
+            messages.map((msg) => (
+              <ChatMessage
+                key={msg.id}
+                role={msg.role}
+                content={msg.content}
+                version={msg.version}
+                tokenUsage={msg.tokenUsage}
+                isStreaming={msg.isStreaming}
+                reasoningContent={msg.reasoningContent}
+                promptSource={msg.promptSource}
+              />
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </main>
 
-        <MarkdownPreview content={markdownContent} />
-      </div>
-    </main>
+      {/* Scroll to bottom button - centered above input */}
+      {showScrollButton && (
+        <div className="fixed bottom-24 left-0 right-0 flex justify-center z-10 pointer-events-none">
+          <button
+            onClick={scrollToBottom}
+            className="p-2 px-4 bg-white border border-gray-200 rounded-full shadow-lg hover:bg-gray-50 transition-colors pointer-events-auto flex items-center gap-2 text-sm text-gray-600"
+          >
+            <ArrowDown size={16} />
+            <span>滚动到底部</span>
+          </button>
+        </div>
+      )}
+
+      {/* Fixed Bottom Input */}
+      <ChatInput
+        onSend={handleSend}
+        onStop={handleStop}
+        isLoading={isLoading}
+        placeholder={
+          versionCount === 0
+            ? "描述您的功能需求..."
+            : "继续对话，提出修改意见或要求生成新版..."
+        }
+      />
+    </div>
   );
 }

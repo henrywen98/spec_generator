@@ -224,6 +224,7 @@ export default function Home() {
           ...message,
           content: `❌ 错误: ${err}`,
           isStreaming: false,
+          version: undefined,  // Clear version on error
         }));
         finalizeRequest();
       },
@@ -239,6 +240,7 @@ export default function Home() {
             ...message,
             isStreaming: false,
             content: existing ? message.content : '⏹️ 已停止生成',
+            version: undefined,  // Clear version on abort
           };
         });
       }

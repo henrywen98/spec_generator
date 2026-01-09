@@ -10,6 +10,7 @@ interface UseStreamParserResult {
   reasoningContent: string;
   markdownContent: string;
   tokenUsage: TokenUsage | null;
+  isFullPrd: boolean | null;
   parseChunk: (chunk: string) => void;
   reset: () => void;
 }
@@ -20,12 +21,14 @@ export function useStreamParser(): UseStreamParserResult {
   const [reasoningContent, setReasoningContent] = useState('');
   const [markdownContent, setMarkdownContent] = useState('');
   const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
+  const [isFullPrd, setIsFullPrd] = useState<boolean | null>(null);
   const bufferRef = useRef('');
 
   const reset = useCallback(() => {
     setReasoningContent('');
     setMarkdownContent('');
     setTokenUsage(null);
+    setIsFullPrd(null);
     bufferRef.current = '';
   }, []);
 
@@ -64,6 +67,11 @@ export function useStreamParser(): UseStreamParserResult {
               totalTokens: Number(event.total_tokens ?? 0),
             });
             break;
+          case 'metadata':
+            if (typeof event.is_full_prd === 'boolean') {
+              setIsFullPrd(event.is_full_prd);
+            }
+            break;
           case 'error':
             if (typeof event.message === 'string') {
               setMarkdownContent(prev => `${prev}\n\n❌ ${event.message}`);
@@ -80,5 +88,5 @@ export function useStreamParser(): UseStreamParserResult {
     }
   }, []);
 
-  return { reasoningContent, markdownContent, tokenUsage, parseChunk, reset };
+  return { reasoningContent, markdownContent, tokenUsage, isFullPrd, parseChunk, reset };
 }

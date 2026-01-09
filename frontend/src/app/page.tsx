@@ -48,11 +48,12 @@ function getChatHistory(messages: Message[]): ChatHistoryMessage[] {
 }
 
 export default function Home() {
-  const { reasoningContent, markdownContent, tokenUsage, parseChunk, reset } = useStreamParser();
+  const { reasoningContent, markdownContent, tokenUsage, isFullPrd, parseChunk, reset } = useStreamParser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [versionCount, setVersionCount] = useState(0);
+  const versionCountRef = useRef(0); // 用于同步获取最新版本号，避免竞态条件
   const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -109,15 +110,39 @@ export default function Home() {
   // Finalize message when streaming completes
   useEffect(() => {
     if (!isLoading && markdownContent && messages.length > 0) {
-      updateLastAssistant(message => ({
-        ...message,
-        content: markdownContent,
-        tokenUsage,
-        reasoningContent,
-        isStreaming: false,
-      }));
+      // 使用 updateLastAssistant 的 updater 函数来检查消息状态
+      // 这避免了将 messages 作为依赖项导致的无限循环
+      updateLastAssistant(message => {
+        // 检查是否为 chat 模式下的完整 PRD 输出（需要递增版本号）
+        const isChatModeFullPrd = message.role === 'assistant'
+          && message.version === undefined
+          && isFullPrd === true;
+
+        if (isChatModeFullPrd) {
+          // Chat 模式下输出了完整 PRD，使用 ref 同步递增版本号
+          versionCountRef.current += 1;
+          const newVersion = versionCountRef.current;
+          setVersionCount(newVersion);
+          return {
+            ...message,
+            content: markdownContent,
+            tokenUsage,
+            reasoningContent,
+            isStreaming: false,
+            version: newVersion,
+          };
+        } else {
+          return {
+            ...message,
+            content: markdownContent,
+            tokenUsage,
+            reasoningContent,
+            isStreaming: false,
+          };
+        }
+      });
     }
-  }, [isLoading, markdownContent, tokenUsage, reasoningContent, messages.length, updateLastAssistant]);
+  }, [isLoading, markdownContent, tokenUsage, reasoningContent, isFullPrd, messages.length, updateLastAssistant]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -158,7 +183,11 @@ export default function Home() {
     // Add placeholder assistant message
     // For initial generation, always create a new version
     // For chat mode, we'll update version later if LLM outputs a full PRD
-    const newVersion = isInitialGeneration ? versionCount + 1 : undefined;
+    let newVersion: number | undefined;
+    if (isInitialGeneration) {
+      versionCountRef.current += 1;
+      newVersion = versionCountRef.current;
+    }
     const assistantMessage: Message = {
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -170,7 +199,7 @@ export default function Home() {
 
     setMessages(prev => [...prev, userMessage, assistantMessage]);
     if (isInitialGeneration) {
-      setVersionCount(prev => prev + 1);
+      setVersionCount(versionCountRef.current);
     }
 
     const controller = new AbortController();
@@ -195,6 +224,7 @@ export default function Home() {
           ...message,
           content: `❌ 错误: ${err}`,
           isStreaming: false,
+          version: undefined,  // Clear version on error
         }));
         finalizeRequest();
       },
@@ -210,6 +240,7 @@ export default function Home() {
             ...message,
             isStreaming: false,
             content: existing ? message.content : '⏹️ 已停止生成',
+            version: undefined,  // Clear version on abort
           };
         });
       }

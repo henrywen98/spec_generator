@@ -23,7 +23,7 @@ export async function copyToClipboard(
     // If Clipboard API fails, try fallback
     try {
       return fallbackCopy(content);
-    } catch (fallbackErr) {
+    } catch {
       return {
         success: false,
         error: err instanceof Error ? err.message : '复制失败，请检查浏览器权限'

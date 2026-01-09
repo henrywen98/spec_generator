@@ -4,9 +4,11 @@ import React, { useState } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Copy, Check, ChevronDown, ChevronUp, Brain } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronUp, Brain, FileText, FileDown } from 'lucide-react';
 import { TokenUsage } from '@/hooks/useStreamParser';
 import { useExport } from '@/hooks/use-export';
+import { ProgressModal } from '@/components/export/progress-modal';
+import { WarningModal } from '@/components/export/warning-modal';
 
 interface ChatMessageProps {
     role: 'user' | 'assistant';
@@ -29,17 +31,68 @@ export default function ChatMessage({
 }: ChatMessageProps) {
     const [copied, setCopied] = useState(false);
     const [showReasoning, setShowReasoning] = useState(false);
-    const { status: exportStatus, copyToClipboard, error: copyError } = useExport();
+    const [showWarning, setShowWarning] = useState<'pdf' | 'docx' | null>(null);
+    const {
+        status: exportStatus,
+        progress,
+        currentFormat,
+        copyToClipboard,
+        exportToPDF,
+        exportToDOCX,
+        cancelExport,
+        checkDocumentSize,
+        error: exportError
+    } = useExport();
 
     // During streaming, check if we're still in "reasoning" phase (no main content yet)
     const isReasoningPhase = isStreaming && reasoningContent && !content;
     const hasContent = content && content.trim().length > 0;
+    const canExport = hasContent && !isStreaming && version !== undefined;
 
     const handleCopy = async () => {
         const success = await copyToClipboard(content);
         if (success) {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const handlePDFExport = async () => {
+        if (!version) return;
+
+        // Check document size
+        const sizeInfo = checkDocumentSize(content);
+        if (sizeInfo.shouldWarn) {
+            setShowWarning('pdf');
+            return;
+        }
+
+        await exportToPDF(content, version);
+    };
+
+    const handleDOCXExport = async () => {
+        if (!version) return;
+
+        // Check document size
+        const sizeInfo = checkDocumentSize(content);
+        if (sizeInfo.shouldWarn) {
+            setShowWarning('docx');
+            return;
+        }
+
+        await exportToDOCX(content, version);
+    };
+
+    const handleWarningConfirm = async () => {
+        if (!version) return;
+
+        const format = showWarning;
+        setShowWarning(null);
+
+        if (format === 'pdf') {
+            await exportToPDF(content, version);
+        } else if (format === 'docx') {
+            await exportToDOCX(content, version);
         }
     };
 
@@ -130,30 +183,101 @@ export default function ChatMessage({
                         {/* Actions */}
                         {hasContent && !isStreaming && (
                             <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t border-gray-100">
-                                <div className="flex items-center gap-2">
-                                    {/* Copy button with accessibility */}
+                                <div className="flex items-center gap-1">
+                                    {/* Copy button with visual polish */}
                                     <button
                                         onClick={handleCopy}
-                                        disabled={exportStatus === 'generating'}
+                                        disabled={exportStatus === 'generating' || exportStatus === 'finalizing'}
                                         aria-label="复制内容到剪贴板"
-                                        aria-busy={exportStatus === 'generating'}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                                        aria-busy={exportStatus === 'generating' && currentFormat === 'copy'}
+                                        className={`
+                                            flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md
+                                            transition-all duration-150 ease-in-out transform
+                                            focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
+                                            disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                                            ${copied
+                                                ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                                                : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100 active:bg-gray-200 active:scale-95'
+                                            }
+                                        `}
                                     >
-                                        {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                                        {copied ? (
+                                            <Check size={14} className="text-emerald-600 animate-in fade-in duration-200" />
+                                        ) : (
+                                            <Copy size={14} className="transition-transform group-hover:scale-110" />
+                                        )}
                                         {copied ? '已复制' : '复制'}
                                     </button>
 
+                                    {/* PDF export button with visual polish */}
+                                    {canExport && (
+                                        <button
+                                            onClick={handlePDFExport}
+                                            disabled={exportStatus === 'generating' || exportStatus === 'finalizing'}
+                                            aria-label="导出为 PDF"
+                                            aria-busy={currentFormat === 'pdf' && (exportStatus === 'generating' || exportStatus === 'finalizing')}
+                                            className={`
+                                                flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md
+                                                transition-all duration-150 ease-in-out transform
+                                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
+                                                disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                                                ${currentFormat === 'pdf' && exportStatus === 'success'
+                                                    ? 'text-emerald-700 bg-emerald-50'
+                                                    : 'text-gray-700 hover:text-red-700 hover:bg-red-50 active:bg-red-100 active:scale-95'
+                                                }
+                                            `}
+                                        >
+                                            {currentFormat === 'pdf' && exportStatus === 'generating' ? (
+                                                <span className="animate-spin">⏳</span>
+                                            ) : (
+                                                <FileText size={14} />
+                                            )}
+                                            {currentFormat === 'pdf' && exportStatus === 'generating' ? '导出中...' : 'PDF'}
+                                        </button>
+                                    )}
+
+                                    {/* DOCX export button with visual polish */}
+                                    {canExport && (
+                                        <button
+                                            onClick={handleDOCXExport}
+                                            disabled={exportStatus === 'generating' || exportStatus === 'finalizing'}
+                                            aria-label="导出为 Word 文档"
+                                            aria-busy={currentFormat === 'docx' && (exportStatus === 'generating' || exportStatus === 'finalizing')}
+                                            className={`
+                                                flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md
+                                                transition-all duration-150 ease-in-out transform
+                                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
+                                                disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+                                                ${currentFormat === 'docx' && exportStatus === 'success'
+                                                    ? 'text-emerald-700 bg-emerald-50'
+                                                    : 'text-gray-700 hover:text-blue-700 hover:bg-blue-50 active:bg-blue-100 active:scale-95'
+                                                }
+                                            `}
+                                        >
+                                            {currentFormat === 'docx' && exportStatus === 'generating' ? (
+                                                <span className="animate-spin">⏳</span>
+                                            ) : (
+                                                <FileDown size={14} />
+                                            )}
+                                            {currentFormat === 'docx' && exportStatus === 'generating' ? '导出中...' : 'Word'}
+                                        </button>
+                                    )}
+
                                     {/* Error message display */}
-                                    {copyError && (
+                                    {exportError && (
                                         <span className="text-xs text-red-600" role="alert" aria-live="polite">
-                                            {copyError}
+                                            {exportError}
                                         </span>
                                     )}
 
                                     {/* Screen reader announcement */}
                                     <span className="sr-only" aria-live="polite" role="status">
-                                        {exportStatus === 'generating' && '正在复制...'}
+                                        {exportStatus === 'generating' && currentFormat === 'copy' && '正在复制...'}
+                                        {exportStatus === 'generating' && currentFormat === 'pdf' && '正在生成 PDF...'}
+                                        {exportStatus === 'generating' && currentFormat === 'docx' && '正在生成 Word 文档...'}
                                         {copied && '内容已复制到剪贴板'}
+                                        {exportStatus === 'success' && currentFormat === 'pdf' && 'PDF 导出成功'}
+                                        {exportStatus === 'success' && currentFormat === 'docx' && 'Word 文档导出成功'}
                                     </span>
                                 </div>
 
@@ -165,6 +289,26 @@ export default function ChatMessage({
                                     </div>
                                 )}
                             </div>
+                        )}
+
+                        {/* Progress Modal */}
+                        <ProgressModal
+                            isOpen={(exportStatus === 'generating' || exportStatus === 'finalizing') && (currentFormat === 'pdf' || currentFormat === 'docx')}
+                            format={currentFormat === 'docx' ? 'docx' : 'pdf'}
+                            progress={progress}
+                            stage={exportStatus === 'finalizing' ? 'finalizing' : 'generating'}
+                            onCancel={cancelExport}
+                        />
+
+                        {/* Warning Modal for large documents */}
+                        {showWarning && (
+                            <WarningModal
+                                isOpen={true}
+                                sizeInfo={checkDocumentSize(content)}
+                                format={showWarning}
+                                onConfirm={handleWarningConfirm}
+                                onCancel={() => setShowWarning(null)}
+                            />
                         )}
                     </div>
                 )}

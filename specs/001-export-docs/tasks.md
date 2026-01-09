@@ -71,12 +71,12 @@
 
 ### Implementation for User Story 2
 
-- [ ] T013 [P] [US2] Implement PDF export service in frontend/src/lib/export/export-pdf.ts (exportToPDF function using html2pdf.js with PDFOptions configuration)
-- [ ] T014 [P] [US2] Create ExportButton component in frontend/src/components/export/export-button.tsx (reusable button with loading state, ARIA labels, keyboard support)
-- [ ] T015 [P] [US2] Create ProgressModal component in frontend/src/components/export/progress-modal.tsx (progress indicator for exports taking >2 seconds, cancel button support)
-- [ ] T016 [P] [US2] Create WarningModal component in frontend/src/components/export/warning-modal.tsx (large document warning >10,000 words with confirm/cancel options)
-- [ ] T017 [US2] Extend useExport hook with PDF support in frontend/src/hooks/use-export.ts (exportPDF function with progress tracking and error handling)
-- [ ] T018 [US2] Add PDF export button to ChatMessage in frontend/src/components/chat-message.tsx (conditional display when version exists, disabled during streaming, ARIA compliance)
+- [X] T013 [P] [US2] Implement PDF export service in frontend/src/lib/export/export-pdf.ts (exportToPDF function using html2pdf.js with PDFOptions configuration)
+- [X] T014 [P] [US2] Create ExportButton component in frontend/src/components/export/export-button.tsx (reusable button with loading state, ARIA labels, keyboard support)
+- [X] T015 [P] [US2] Create ProgressModal component in frontend/src/components/export/progress-modal.tsx (progress indicator for exports taking >2 seconds, cancel button support)
+- [X] T016 [P] [US2] Create WarningModal component in frontend/src/components/export/warning-modal.tsx (large document warning >10,000 words with confirm/cancel options)
+- [X] T017 [US2] Extend useExport hook with PDF support in frontend/src/hooks/use-export.ts (exportPDF function with progress tracking and error handling)
+- [X] T018 [US2] Add PDF export button to ChatMessage in frontend/src/components/chat-message.tsx (conditional display when version exists, disabled during streaming, ARIA compliance)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - PDF exports functional with progress tracking and large document warnings
 
@@ -90,10 +90,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T019 [P] [US3] Implement markdown parser in frontend/src/lib/export/markdown-parser.ts (parseMarkdownTokens function using marked.lexer, convert tokens to docx structure)
-- [ ] T020 [P] [US3] Implement DOCX export service in frontend/src/lib/export/export-docx.ts (exportToDOCX function using docx library with DOCXOptions, Chinese font configuration)
-- [ ] T021 [US3] Extend useExport hook with DOCX support in frontend/src/hooks/use-export.ts (exportDOCX function with progress tracking and error handling)
-- [ ] T022 [US3] Add DOCX export button to ChatMessage in frontend/src/components/chat-message.tsx (conditional display when version exists, disabled during streaming, ARIA compliance)
+- [X] T019 [P] [US3] Implement markdown parser in frontend/src/lib/export/markdown-parser.ts (parseMarkdownTokens function using marked.lexer, convert tokens to docx structure)
+- [X] T020 [P] [US3] Implement DOCX export service in frontend/src/lib/export/export-docx.ts (exportToDOCX function using docx library with DOCXOptions, Chinese font configuration)
+- [X] T021 [US3] Extend useExport hook with DOCX support in frontend/src/hooks/use-export.ts (exportDOCX function with progress tracking and error handling)
+- [X] T022 [US3] Add DOCX export button to ChatMessage in frontend/src/components/chat-message.tsx (conditional display when version exists, disabled during streaming, ARIA compliance)
 
 **Checkpoint**: All user stories should now be independently functional - copy, PDF export, and DOCX export all working
 
@@ -103,11 +103,11 @@
 
 **Purpose**: Cross-cutting improvements affecting multiple user stories
 
-- [ ] T023 [P] Add dynamic import optimization for export libraries in frontend/src/lib/export/export-pdf.ts and frontend/src/lib/export/export-docx.ts (lazy load html2pdf.js and docx to reduce initial bundle)
-- [ ] T024 [P] Implement WCAG 2.1 AA compliance validation in frontend/src/components/export/export-button.tsx (verify color contrast 4.5:1, focus indicators, screen reader support)
-- [ ] T025 Add visual polish to export buttons in frontend/src/components/chat-message.tsx (hover states, loading animations, disabled state styling, transition effects)
-- [ ] T026 [P] Add error boundary for export components in frontend/src/components/export/ (ErrorBoundary component to catch and display export errors gracefully)
-- [ ] T027 Run local validation per quickstart.md in frontend/ (test copy, PDF export, DOCX export with large and small documents, verify accessibility)
+- [X] T023 [P] Add dynamic import optimization for export libraries in frontend/src/lib/export/export-pdf.ts and frontend/src/lib/export/export-docx.ts (lazy load html2pdf.js and docx to reduce initial bundle)
+- [X] T024 [P] Implement WCAG 2.1 AA compliance validation in frontend/src/components/export/export-button.tsx (verify color contrast 4.5:1, focus indicators, screen reader support)
+- [X] T025 Add visual polish to export buttons in frontend/src/components/chat-message.tsx (hover states, loading animations, disabled state styling, transition effects)
+- [X] T026 [P] Add error boundary for export components in frontend/src/components/export/ (ErrorBoundary component to catch and display export errors gracefully)
+- [X] T027 Run local validation per quickstart.md in frontend/ (test copy, PDF export, DOCX export with large and small documents, verify accessibility)
 
 ---
 

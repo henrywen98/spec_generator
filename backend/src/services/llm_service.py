@@ -1,12 +1,13 @@
 import json
 import logging
 import os
-import dashscope
 from http import HTTPStatus
 from typing import Generator
+
+import dashscope
 from dashscope.api_entities.dashscope_response import Message
 
-from src.core.prompt_loader import get_prompt_loader, get_chat_prompt_loader
+from src.core.prompt_loader import get_chat_prompt_loader, get_prompt_loader
 from src.models.schemas import ImageAttachment
 
 logger = logging.getLogger("uvicorn.error")

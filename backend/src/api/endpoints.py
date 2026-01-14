@@ -1,7 +1,9 @@
 import json
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
+
 from src.models.schemas import GenerationRequest
 from src.services.llm_service import LLMService
 

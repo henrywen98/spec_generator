@@ -2,8 +2,6 @@ import json
 from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
-from dashscope.api_entities.dashscope_response import Message
-
 from src.services.llm_service import LLMService
 
 

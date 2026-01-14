@@ -1,6 +1,7 @@
 import os
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
+
 
 class PromptLoader:
     def __init__(self, file_path: str = None):
@@ -16,15 +17,15 @@ class PromptLoader:
         if not self.file_path.exists():
             raise FileNotFoundError(f"Prompt file not found at: {self.file_path}")
 
-        with open(self.file_path, "r", encoding="utf-8") as f:
+        with open(self.file_path, encoding="utf-8") as f:
             return f.read()
 
-@lru_cache()
+@lru_cache
 def get_prompt_loader() -> PromptLoader:
     """Loader for generate mode (from scratch)."""
     return PromptLoader()
 
-@lru_cache()
+@lru_cache
 def get_chat_prompt_loader() -> PromptLoader:
     """Loader for chat mode (discuss/modify existing PRD)."""
     chat_path = os.getenv("PROMPT_CHAT_FILE_PATH")

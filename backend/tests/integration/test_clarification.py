@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock
+
+import pytest
 from fastapi.testclient import TestClient
+
 from src.main import app
 from src.services.llm_service import LLMService
-from unittest.mock import MagicMock
-import pytest
 
 client = TestClient(app)
 

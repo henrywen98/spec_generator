@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Square } from 'lucide-react';
 import { ImageUpload } from './image-upload';
 import { ImagePreviewList } from './image-preview';
@@ -62,6 +62,31 @@ export default function ChatInput({
         }
     };
 
+    // Handle paste event for clipboard images
+    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+        if (!onAddImages || !canAddMoreImages) return;
+
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        const imageFiles: File[] = [];
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) {
+                    imageFiles.push(file);
+                }
+            }
+        }
+
+        if (imageFiles.length > 0) {
+            // Convert File[] to FileList-like object
+            const dataTransfer = new DataTransfer();
+            imageFiles.forEach(file => dataTransfer.items.add(file));
+            onAddImages(dataTransfer.files);
+        }
+    }, [onAddImages, canAddMoreImages]);
+
     // Check if image upload is enabled
     const imageUploadEnabled = !!onAddImages && !!onRemoveImage;
 
@@ -94,6 +119,7 @@ export default function ChatInput({
                         value={input}
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        onPaste={handlePaste}
                         placeholder={placeholder}
                         rows={1}
                         className="flex-1 resize-none bg-transparent px-3 py-2 text-sm text-gray-900 focus:outline-none placeholder-gray-400 disabled:opacity-50 max-h-48"
@@ -112,7 +138,7 @@ export default function ChatInput({
                     </button>
                 </div>
                 <p className="text-xs text-gray-400 text-center mt-2">
-                    ⌘ + Enter 发送
+                    ⌘ + Enter 发送 · ⌘ + V 粘贴图片
                 </p>
             </div>
         </div>

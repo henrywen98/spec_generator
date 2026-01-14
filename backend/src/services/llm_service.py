@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from http import HTTPStatus
-from typing import Generator
+from collections.abc import Generator
 
 import dashscope
 from dashscope.api_entities.dashscope_response import Message

@@ -20,11 +20,13 @@ class LLMService:
             raise ValueError("DASHSCOPE_API_KEY environment variable is not set")
         dashscope.api_key = self.api_key
         self.model = os.getenv("DASHSCOPE_MODEL", "deepseek-v3.2")
-        self.vl_model = os.getenv("DASHSCOPE_VL_MODEL", "qwen-vl-plus")
+        self.vl_model = os.getenv("DASHSCOPE_VL_MODEL", "qwen3-vl-plus")  # Updated default to qwen3-vl-plus
         self.enable_thinking = os.getenv("ENABLE_THINKING", "true").lower() in ("1", "true", "yes")
         self.debug_errors = os.getenv("DEBUG_ERRORS", "false").lower() in ("1", "true", "yes")
         self.prompt_loader = get_prompt_loader()
         self.chat_prompt_loader = get_chat_prompt_loader()
+        logger.info("LLMService initialized: model=%s, vl_model=%s, enable_thinking=%s",
+                    self.model, self.vl_model, self.enable_thinking)
 
     def _emit_event(self, event: dict) -> str:
         return json.dumps(event, ensure_ascii=True) + "\n"
@@ -150,7 +152,12 @@ class LLMService:
         """
         try:
             responses = dashscope.MultiModalConversation.call(
-                model=self.vl_model, messages=messages, stream=True, incremental_output=True, timeout=300
+                model=self.vl_model,
+                messages=messages,
+                stream=True,
+                incremental_output=True,
+                enable_thinking=self.enable_thinking,
+                timeout=300,
             )
         except Exception as exc:
             message = str(exc) if self.debug_errors else "Upstream model error"
@@ -165,6 +172,18 @@ class LLMService:
                 if response.output and response.output.choices:
                     choice = response.output.choices[0]
                     message = choice.message
+
+                    # 提取 reasoning_content（思考过程）
+                    try:
+                        reasoning_content = message.reasoning_content
+                        if reasoning_content:
+                            logger.info("VL model returned reasoning content: %d chars", len(reasoning_content))
+                            yield self._emit_event({"type": "reasoning", "content": reasoning_content})
+                        else:
+                            logger.warning("VL model returned empty reasoning_content")
+                    except (KeyError, AttributeError) as e:
+                        logger.warning("VL model does not have reasoning_content attribute: %s", e)
+
                     # MultiModalConversation 返回的 content 可能是列表
                     content = message.content
                     if content:
@@ -178,6 +197,7 @@ class LLMService:
                         elif isinstance(content, str):
                             yield self._emit_event({"type": "content", "content": content})
             else:
+                logger.error("VL API error: status=%s, code=%s, message=%s", response.status_code, response.code, response.message)
                 error_msg = response.message if self.debug_errors else "Upstream model error"
                 yield self._emit_event({"type": "error", "message": error_msg, "code": response.code})
 

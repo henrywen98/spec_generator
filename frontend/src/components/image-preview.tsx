@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { X, AlertCircle, Loader2 } from 'lucide-react';
 import type { PendingImage } from '@/hooks/useImageUpload';
 
@@ -82,7 +81,7 @@ export function ImagePreviewList({ images, onRemove, maxCount }: ImagePreviewLis
     return null;
   }
 
-  const readyCount = images.filter((img: PendingImage) => img.status === 'ready').length;
+  const readyCount = images.filter(img => img.status === 'ready').length;
 
   return (
     <div className="space-y-2">
@@ -96,7 +95,7 @@ export function ImagePreviewList({ images, onRemove, maxCount }: ImagePreviewLis
 
       {/* 图片预览网格 */}
       <div className="flex flex-wrap gap-2">
-        {images.map((image: PendingImage) => (
+        {images.map(image => (
           <ImagePreviewItem
             key={image.id}
             image={image}

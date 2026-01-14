@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { SUPPORTED_IMAGE_TYPES } from '@/hooks/useImageUpload';
 

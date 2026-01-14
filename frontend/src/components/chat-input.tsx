@@ -92,7 +92,7 @@ export default function ChatInput({
                     <textarea
                         ref={textareaRef}
                         value={input}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+                        onChange={e => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
                         rows={1}

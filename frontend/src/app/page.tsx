@@ -77,15 +77,11 @@ export default function Home() {
   }, []);
 
   const updateLastAssistant = useCallback((updater: (message: Message) => Message) => {
-    setMessages((prev: Message[]) => {
-      if (prev.length === 0) {
-        return prev;
-      }
+    setMessages(prev => {
+      if (prev.length === 0) return prev;
       const updated = [...prev];
       const lastIdx = updated.length - 1;
-      if (updated[lastIdx].role !== 'assistant') {
-        return prev;
-      }
+      if (updated[lastIdx].role !== 'assistant') return prev;
       updated[lastIdx] = updater(updated[lastIdx]);
       return updated;
     });
@@ -111,7 +107,7 @@ export default function Home() {
   // Update the last assistant message with streaming content (no auto-scroll)
   useEffect(() => {
     if (isLoading && (markdownContent || reasoningContent)) {
-      updateLastAssistant((message: Message) => ({
+      updateLastAssistant(message => ({
         ...message,
         content: markdownContent,
         reasoningContent,
@@ -124,7 +120,7 @@ export default function Home() {
     if (!isLoading && markdownContent && messages.length > 0) {
       // 使用 updateLastAssistant 的 updater 函数来检查消息状态
       // 这避免了将 messages 作为依赖项导致的无限循环
-      updateLastAssistant((message: Message) => {
+      updateLastAssistant(message => {
         // 检查是否为 chat 模式下的完整 PRD 输出（需要递增版本号）
         const isChatModeFullPrd = message.role === 'assistant'
           && message.version === undefined
@@ -161,8 +157,7 @@ export default function Home() {
   }, []);
 
   const getLatestPrd = useCallback(() => {
-    // Get the latest complete PRD (only from version messages)
-    const prdMessages = messages.filter((m: Message) => m.role === 'assistant' && m.version && !m.isStreaming);
+    const prdMessages = messages.filter(m => m.role === 'assistant' && m.version && !m.isStreaming);
     return prdMessages.length > 0 ? prdMessages[prdMessages.length - 1].content : '';
   }, [messages]);
 
@@ -212,7 +207,7 @@ export default function Home() {
       promptSource: promptLabel,
     };
 
-    setMessages((prev: Message[]) => [...prev, userMessage, assistantMessage]);
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
     if (isInitialGeneration) {
       setVersionCount(versionCountRef.current);
     }
@@ -239,12 +234,12 @@ export default function Home() {
     await generateSpecStream(
       userInput,
       parseChunk,
-      (err: string) => {
-        updateLastAssistant((message: Message) => ({
-          ...message,
+      err => {
+        updateLastAssistant(msg => ({
+          ...msg,
           content: `❌ 错误: ${err}`,
           isStreaming: false,
-          version: undefined,  // Clear version on error
+          version: undefined,
         }));
         finalizeRequest();
       },
@@ -254,7 +249,7 @@ export default function Home() {
       options,
       () => {
         finalizeRequest();
-        updateLastAssistant((message: Message) => {
+        updateLastAssistant(message => {
           const existing = message.content?.trim();
           return {
             ...message,

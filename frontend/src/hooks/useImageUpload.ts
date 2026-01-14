@@ -158,7 +158,7 @@ export function useImageUpload() {
       }
     }
 
-    setPendingImages((prev: PendingImage[]) => [...prev, ...newImages]);
+    setPendingImages(prev => [...prev, ...newImages]);
     setIsProcessing(false);
   }, [pendingImages.length]);
 
@@ -166,13 +166,12 @@ export function useImageUpload() {
    * 删除指定图片
    */
   const removeImage = useCallback((id: string) => {
-    setPendingImages((prev: PendingImage[]) => {
-      const image = prev.find((img: PendingImage) => img.id === id);
-      // 释放 Object URL
+    setPendingImages(prev => {
+      const image = prev.find(img => img.id === id);
       if (image?.preview) {
         URL.revokeObjectURL(image.preview);
       }
-      return prev.filter((img: PendingImage) => img.id !== id);
+      return prev.filter(img => img.id !== id);
     });
   }, []);
 
@@ -180,8 +179,7 @@ export function useImageUpload() {
    * 清空所有图片
    */
   const clearImages = useCallback(() => {
-    // 释放所有 Object URLs
-    pendingImages.forEach((img: PendingImage) => {
+    pendingImages.forEach(img => {
       if (img.preview) {
         URL.revokeObjectURL(img.preview);
       }
@@ -194,8 +192,8 @@ export function useImageUpload() {
    */
   const getImageAttachments = useCallback((): ImageAttachment[] => {
     return pendingImages
-      .filter((img: PendingImage) => img.status === 'ready')
-      .map((img: PendingImage) => ({
+      .filter(img => img.status === 'ready')
+      .map(img => ({
         data: img.base64,
         mime_type: img.mimeType,
         filename: img.file.name,
@@ -211,7 +209,7 @@ export function useImageUpload() {
   /**
    * 获取有效图片数量
    */
-  const readyCount = pendingImages.filter((img: PendingImage) => img.status === 'ready').length;
+  const readyCount = pendingImages.filter(img => img.status === 'ready').length;
 
   return {
     pendingImages,

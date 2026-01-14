@@ -13,7 +13,7 @@ import {
   FileDown,
   FileText,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
@@ -40,6 +40,8 @@ export default function ChatMessage({
   const [copied, setCopied] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
   const [showWarning, setShowWarning] = useState<"pdf" | "docx" | null>(null);
+  const reasoningBoxRef = useRef<HTMLPreElement>(null);
+
   const {
     status: exportStatus,
     progress,
@@ -56,6 +58,13 @@ export default function ChatMessage({
   const isReasoningPhase = isStreaming && reasoningContent && !content;
   const hasContent = content && content.trim().length > 0;
   const canExport = hasContent && !isStreaming && version !== undefined;
+
+  // Auto-scroll reasoning box to bottom when content updates during streaming
+  useEffect(() => {
+    if (isReasoningPhase && reasoningContent && reasoningBoxRef.current) {
+      reasoningBoxRef.current.scrollTop = reasoningBoxRef.current.scrollHeight;
+    }
+  }, [reasoningContent, isReasoningPhase]);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(content);
@@ -150,7 +159,10 @@ export default function ChatMessage({
               )}
             </div>
             <div className="relative">
-              <pre className="whitespace-pre-wrap font-mono text-sm text-amber-900 max-h-64 overflow-y-auto border border-amber-300/30 rounded p-3 bg-amber-50/50 scrollbar-thin scrollbar-thumb-amber-400 scrollbar-track-amber-100">
+              <pre
+                ref={reasoningBoxRef}
+                className="whitespace-pre-wrap font-mono text-sm text-amber-900 max-h-64 overflow-y-auto border border-amber-300/30 rounded p-3 bg-amber-50/50 scrollbar-thin scrollbar-thumb-amber-400 scrollbar-track-amber-100"
+              >
                 {reasoningContent}
               </pre>
               {reasoningContent.split("\n").length > 10 && (

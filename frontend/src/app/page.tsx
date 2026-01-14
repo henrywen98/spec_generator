@@ -27,6 +27,7 @@ export default function Home() {
   const [versionCount, setVersionCount] = useState(0);
   const versionCountRef = useRef(0); // 用于同步获取最新版本号，避免竞态条件
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -64,6 +65,7 @@ export default function Home() {
     if (container) {
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
       setShowScrollButton(!isNearBottom);
+      setUserHasScrolledUp(!isNearBottom); // Track if user scrolled up
     }
   }, []);
 
@@ -86,6 +88,13 @@ export default function Home() {
     }
   }, [markdownContent, reasoningContent, isLoading, updateLastAssistant]);
 
+  // Auto-scroll when content updates during streaming, unless user scrolled up
+  useEffect(() => {
+    if (isLoading && !userHasScrolledUp) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [markdownContent, reasoningContent, isLoading, userHasScrolledUp]);
+
   // Finalize message when streaming completes
   useEffect(() => {
     if (!isLoading && markdownContent && messages.length > 0) {
@@ -101,6 +110,7 @@ export default function Home() {
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setUserHasScrolledUp(false); // Reset scroll intent when user clicks button
   }, []);
 
   const getLatestPrd = useCallback(() => {
@@ -121,6 +131,7 @@ export default function Home() {
   const handleSend = useCallback(async (userInput: string) => {
     setIsLoading(true);
     reset();
+    setUserHasScrolledUp(false); // Reset scroll intent when sending new message
 
     const { mode } = determineMode();
     const currentPrd = getLatestPrd();

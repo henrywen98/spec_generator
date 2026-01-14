@@ -3,11 +3,6 @@ const API_BASE_URL = '/api/v1';
 
 export type GenerationMode = 'generate' | 'chat';
 
-export interface ChatHistoryMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 // Image attachment for API request (matches backend schema)
 export interface ImageAttachment {
   data: string; // Base64 encoded (without data URI prefix)
@@ -19,7 +14,6 @@ export interface ImageAttachment {
 export interface GenerateOptions {
   mode?: GenerationMode;
   currentPrd?: string;
-  chatHistory?: ChatHistoryMessage[];
   sessionId?: string;
   stream?: boolean;
   signal?: AbortSignal;
@@ -36,7 +30,7 @@ export async function generateSpecStream(
   onAbort?: () => void
 ) {
   try {
-    const { mode = 'generate', currentPrd, chatHistory, sessionId, stream = true, signal, images } = options;
+    const { mode = 'generate', currentPrd, sessionId, stream = true, signal, images } = options;
 
     const response = await fetch(`${API_BASE_URL}/generate`, {
       method: 'POST',
@@ -49,7 +43,6 @@ export async function generateSpecStream(
         stream,
         mode,
         current_prd: currentPrd,
-        chat_history: chatHistory,
         session_id: sessionId,
         images: images && images.length > 0 ? images : undefined,
       }),

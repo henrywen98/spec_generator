@@ -43,13 +43,12 @@ async def generate_spec(
         )
 
     if request.mode == "chat":
-        # Chat mode: discuss or modify existing PRD
+        # Chat mode: modify existing PRD (always outputs full new PRD)
         if not request.current_prd:
             raise HTTPException(status_code=400, detail="current_prd is required for chat mode")
         generator = llm_service.chat_stream(
             current_prd=request.current_prd,
             user_message=request.description,
-            chat_history=request.chat_history,
             images=request.images,
         )
     else:

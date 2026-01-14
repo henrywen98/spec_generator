@@ -10,8 +10,10 @@ from src.services.llm_service import LLMService
 router = APIRouter()
 logger = logging.getLogger("uvicorn.error")
 
+
 def get_llm_service():
     return LLMService()
+
 
 def _collect_stream_content(chunks) -> str:
     content_parts: list[str] = []
@@ -31,17 +33,15 @@ def _collect_stream_content(chunks) -> str:
                 raise HTTPException(status_code=502, detail="Upstream model error")
     return "".join(content_parts)
 
+
 @router.post("/generate")
-async def generate_spec(
-    request: GenerationRequest,
-    llm_service: LLMService = Depends(get_llm_service)
-):
+async def generate_spec(request: GenerationRequest, llm_service: LLMService = Depends(get_llm_service)):
     if request.session_id:
         logger.info(
             "generate request session_id=%s mode=%s images=%d",
             request.session_id,
             request.mode,
-            len(request.images) if request.images else 0
+            len(request.images) if request.images else 0,
         )
 
     if request.mode == "chat":

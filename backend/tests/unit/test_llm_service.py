@@ -7,6 +7,7 @@ from src.services.llm_service import LLMService
 
 class FakeResponse:
     """模拟 DashScope 流式响应"""
+
     def __init__(self, content: str = "", reasoning_content: str = "", status_code=HTTPStatus.OK):
         self.status_code = status_code
         self.output = MagicMock()
@@ -29,6 +30,7 @@ class FakeResponse:
 
 class FakeUsageResponse(FakeResponse):
     """带 usage 信息的响应"""
+
     def __init__(self, input_tokens: int = 10, output_tokens: int = 20):
         super().__init__()
         self.usage = MagicMock()
@@ -40,7 +42,7 @@ def test_build_chat_messages_basic(monkeypatch):
     """测试简化的消息构建（无历史）"""
     monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
 
-    with patch.object(LLMService, '__init__', lambda self: None):
+    with patch.object(LLMService, "__init__", lambda self: None):
         service = LLMService()
 
         messages = service._build_chat_messages(
@@ -64,7 +66,7 @@ def test_build_chat_messages_order(monkeypatch):
     """测试消息顺序：System → PRD → 确认 → 用户消息"""
     monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
 
-    with patch.object(LLMService, '__init__', lambda self: None):
+    with patch.object(LLMService, "__init__", lambda self: None):
         service = LLMService()
 
         messages = service._build_chat_messages(
@@ -84,7 +86,7 @@ def test_stream_response_emits_events(monkeypatch):
     """测试 DashScope 流式响应事件"""
     monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
 
-    with patch.object(LLMService, '__init__', lambda self: None):
+    with patch.object(LLMService, "__init__", lambda self: None):
         service = LLMService()
         service.debug_errors = False
         service.model = "test-model"
@@ -97,7 +99,7 @@ def test_stream_response_emits_events(monkeypatch):
             FakeUsageResponse(input_tokens=10, output_tokens=5),
         ]
 
-        with patch('dashscope.Generation.call', return_value=iter(responses)):
+        with patch("dashscope.Generation.call", return_value=iter(responses)):
             events = [json.loads(line) for line in service._stream_response([])]
 
         assert events[0]["type"] == "content"
@@ -113,7 +115,7 @@ def test_stream_response_emits_reasoning(monkeypatch):
     """测试 DashScope reasoning 事件"""
     monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
 
-    with patch.object(LLMService, '__init__', lambda self: None):
+    with patch.object(LLMService, "__init__", lambda self: None):
         service = LLMService()
         service.debug_errors = False
         service.model = "test-model"
@@ -129,7 +131,7 @@ def test_stream_response_emits_reasoning(monkeypatch):
         response.output.choices[0].message.reasoning_content = "Thinking process"
         response.usage = None
 
-        with patch('dashscope.Generation.call', return_value=iter([response])):
+        with patch("dashscope.Generation.call", return_value=iter([response])):
             events = [json.loads(line) for line in service._stream_response([])]
 
         assert events[0]["type"] == "reasoning"
@@ -142,13 +144,13 @@ def test_stream_response_emits_error(monkeypatch):
     """测试 DashScope 错误处理"""
     monkeypatch.setenv("DASHSCOPE_API_KEY", "test-key")
 
-    with patch.object(LLMService, '__init__', lambda self: None):
+    with patch.object(LLMService, "__init__", lambda self: None):
         service = LLMService()
         service.debug_errors = False
         service.model = "test-model"
         service.enable_thinking = False
 
-        with patch('dashscope.Generation.call', side_effect=RuntimeError("API Error")):
+        with patch("dashscope.Generation.call", side_effect=RuntimeError("API Error")):
             events = [json.loads(line) for line in service._stream_response([])]
 
         assert events[0]["type"] == "error"

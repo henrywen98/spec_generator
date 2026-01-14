@@ -15,6 +15,7 @@ MAX_IMAGES_PER_REQUEST = 5
 
 class ImageAttachment(BaseModel):
     """用户上传的图片附件，包含 Base64 编码数据和元信息。"""
+
     data: str = Field(..., description="Base64 编码的图片数据（不含 data URI 前缀）")
     mime_type: SUPPORTED_IMAGE_TYPES = Field(..., description="图片 MIME 类型")
     filename: str | None = Field(default=None, max_length=255, description="原始文件名")
@@ -23,6 +24,7 @@ class ImageAttachment(BaseModel):
 
 class ChatMessage(BaseModel):
     """单条对话消息，用于前后端通信和 LangChain 消息构建。"""
+
     role: Literal["user", "assistant"]
     content: str = Field(..., min_length=1)
 

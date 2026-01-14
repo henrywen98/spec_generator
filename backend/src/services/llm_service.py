@@ -43,7 +43,7 @@ class LLMService:
                 stream=True,
                 incremental_output=True,
                 enable_thinking=self.enable_thinking,
-                timeout=300
+                timeout=300,
             )
         except Exception as exc:
             message = str(exc) if self.debug_errors else "Upstream model error"
@@ -76,12 +76,14 @@ class LLMService:
             usage = last_response.usage
             input_tokens = getattr(usage, "input_tokens", 0)
             output_tokens = getattr(usage, "output_tokens", 0)
-            yield self._emit_event({
-                "type": "usage",
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_tokens": input_tokens + output_tokens,
-            })
+            yield self._emit_event(
+                {
+                    "type": "usage",
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_tokens": input_tokens + output_tokens,
+                }
+            )
 
     def _build_multimodal_content(
         self,
@@ -129,14 +131,8 @@ class LLMService:
             DashScope MultiModalConversation 格式的消息列表
         """
         messages = [
-            {
-                "role": "system",
-                "content": [{"text": system_prompt}]
-            },
-            {
-                "role": "user",
-                "content": self._build_multimodal_content(user_text, images)
-            }
+            {"role": "system", "content": [{"text": system_prompt}]},
+            {"role": "user", "content": self._build_multimodal_content(user_text, images)},
         ]
         return messages
 
@@ -154,11 +150,7 @@ class LLMService:
         """
         try:
             responses = dashscope.MultiModalConversation.call(
-                model=self.vl_model,
-                messages=messages,
-                stream=True,
-                incremental_output=True,
-                timeout=300
+                model=self.vl_model, messages=messages, stream=True, incremental_output=True, timeout=300
             )
         except Exception as exc:
             message = str(exc) if self.debug_errors else "Upstream model error"
@@ -194,12 +186,14 @@ class LLMService:
             usage = last_response.usage
             input_tokens = getattr(usage, "input_tokens", 0)
             output_tokens = getattr(usage, "output_tokens", 0)
-            yield self._emit_event({
-                "type": "usage",
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_tokens": input_tokens + output_tokens,
-            })
+            yield self._emit_event(
+                {
+                    "type": "usage",
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_tokens": input_tokens + output_tokens,
+                }
+            )
 
     def _build_chat_messages(
         self,
@@ -247,22 +241,10 @@ class LLMService:
             DashScope MultiModalConversation 格式的消息列表
         """
         messages: list[dict] = [
-            {
-                "role": "system",
-                "content": [{"text": system_prompt}]
-            },
-            {
-                "role": "user",
-                "content": [{"text": f"## 当前 PRD\n\n{current_prd}"}]
-            },
-            {
-                "role": "assistant",
-                "content": [{"text": "好的，我已了解当前 PRD 内容，请告诉我你的想法或问题。"}]
-            },
-            {
-                "role": "user",
-                "content": self._build_multimodal_content(user_message, images)
-            },
+            {"role": "system", "content": [{"text": system_prompt}]},
+            {"role": "user", "content": [{"text": f"## 当前 PRD\n\n{current_prd}"}]},
+            {"role": "assistant", "content": [{"text": "好的，我已了解当前 PRD 内容，请告诉我你的想法或问题。"}]},
+            {"role": "user", "content": self._build_multimodal_content(user_message, images)},
         ]
         return messages
 
@@ -290,7 +272,7 @@ class LLMService:
                 "generate_stream with images: count=%d, total_size=%.2fMB, model=%s",
                 len(images),
                 total_size / (1024 * 1024),
-                self.vl_model
+                self.vl_model,
             )
             messages = self._build_multimodal_messages(
                 system_prompt=system_prompt,
@@ -302,7 +284,7 @@ class LLMService:
             # 无图片时保持原有逻辑（向后兼容）
             messages: list[Message] = [
                 Message(role="system", content=system_prompt),
-                Message(role="user", content=user_description)
+                Message(role="user", content=user_description),
             ]
             yield from self._stream_response(messages)
 
@@ -330,7 +312,7 @@ class LLMService:
                 "chat_stream with images: count=%d, total_size=%.2fMB, model=%s",
                 len(images),
                 total_size / (1024 * 1024),
-                self.vl_model
+                self.vl_model,
             )
             messages = self._build_multimodal_chat_messages(
                 system_prompt=system_prompt,

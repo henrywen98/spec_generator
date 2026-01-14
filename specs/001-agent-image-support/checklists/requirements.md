@@ -1,7 +1,7 @@
-# Specification Quality Checklist: 多轮对话上下文
+# Specification Quality Checklist: Agent 框架调整与图片支持
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-01-08
+**Created**: 2026-01-13
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,6 +31,6 @@
 
 ## Notes
 
-- All validation items pass
-- Specification is ready for `/speckit.clarify` or `/speckit.plan`
-- User provided detailed design in input, which has been incorporated as assumptions
+- All items pass validation
+- Spec is ready for `/speckit.clarify` or `/speckit.plan`
+- Assumptions section documents key dependencies (DashScope multimodal support, browser File API)

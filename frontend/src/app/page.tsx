@@ -3,8 +3,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ChatMessage from '@/components/chat-message';
 import ChatInput from '@/components/chat-input';
-import { generateSpecStream, GenerationMode, ChatHistoryMessage } from '@/services/api';
+import { generateSpecStream, GenerationMode, ChatHistoryMessage, ImageAttachment } from '@/services/api';
 import { useStreamParser, TokenUsage } from '@/hooks/useStreamParser';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import { ArrowDown } from 'lucide-react';
 
 interface Message {
@@ -59,13 +60,24 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Image upload hook
+  const {
+    pendingImages,
+    addImages,
+    removeImage,
+    clearImages,
+    getImageAttachments,
+    canAddMore,
+    maxCount,
+  } = useImageUpload();
+
   const finalizeRequest = useCallback(() => {
     setIsLoading(false);
     abortControllerRef.current = null;
   }, []);
 
   const updateLastAssistant = useCallback((updater: (message: Message) => Message) => {
-    setMessages(prev => {
+    setMessages((prev: Message[]) => {
       if (prev.length === 0) {
         return prev;
       }
@@ -99,7 +111,7 @@ export default function Home() {
   // Update the last assistant message with streaming content (no auto-scroll)
   useEffect(() => {
     if (isLoading && (markdownContent || reasoningContent)) {
-      updateLastAssistant(message => ({
+      updateLastAssistant((message: Message) => ({
         ...message,
         content: markdownContent,
         reasoningContent,
@@ -112,7 +124,7 @@ export default function Home() {
     if (!isLoading && markdownContent && messages.length > 0) {
       // 使用 updateLastAssistant 的 updater 函数来检查消息状态
       // 这避免了将 messages 作为依赖项导致的无限循环
-      updateLastAssistant(message => {
+      updateLastAssistant((message: Message) => {
         // 检查是否为 chat 模式下的完整 PRD 输出（需要递增版本号）
         const isChatModeFullPrd = message.role === 'assistant'
           && message.version === undefined
@@ -150,7 +162,7 @@ export default function Home() {
 
   const getLatestPrd = useCallback(() => {
     // Get the latest complete PRD (only from version messages)
-    const prdMessages = messages.filter(m => m.role === 'assistant' && m.version && !m.isStreaming);
+    const prdMessages = messages.filter((m: Message) => m.role === 'assistant' && m.version && !m.isStreaming);
     return prdMessages.length > 0 ? prdMessages[prdMessages.length - 1].content : '';
   }, [messages]);
 
@@ -172,6 +184,9 @@ export default function Home() {
     const currentPrd = getLatestPrd();
     const promptLabel = getPromptLabel(mode);
     const isInitialGeneration = mode === 'generate';
+
+    // Get images before clearing
+    const imageAttachments = getImageAttachments();
 
     // Add user message
     const userMessage: Message = {
@@ -197,10 +212,13 @@ export default function Home() {
       promptSource: promptLabel,
     };
 
-    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    setMessages((prev: Message[]) => [...prev, userMessage, assistantMessage]);
     if (isInitialGeneration) {
       setVersionCount(versionCountRef.current);
     }
+
+    // Clear images after adding to state (images are captured above)
+    clearImages();
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -208,19 +226,21 @@ export default function Home() {
     // 获取对话历史（仅在 chat 模式下传递）
     const chatHistory = isInitialGeneration ? undefined : getChatHistory(messages);
 
+    // Build options with images
     const options = {
       mode,
       currentPrd: isInitialGeneration ? undefined : currentPrd,
       chatHistory,
       sessionId,
       signal: controller.signal,
+      images: imageAttachments.length > 0 ? imageAttachments as ImageAttachment[] : undefined,
     };
 
     await generateSpecStream(
       userInput,
       parseChunk,
-      (err) => {
-        updateLastAssistant(message => ({
+      (err: string) => {
+        updateLastAssistant((message: Message) => ({
           ...message,
           content: `❌ 错误: ${err}`,
           isStreaming: false,
@@ -234,7 +254,7 @@ export default function Home() {
       options,
       () => {
         finalizeRequest();
-        updateLastAssistant(message => {
+        updateLastAssistant((message: Message) => {
           const existing = message.content?.trim();
           return {
             ...message,
@@ -254,6 +274,8 @@ export default function Home() {
     getLatestPrd,
     finalizeRequest,
     updateLastAssistant,
+    getImageAttachments,
+    clearImages,
   ]);
 
   const handleStop = useCallback(() => {
@@ -337,6 +359,11 @@ export default function Home() {
             ? "描述您的功能需求..."
             : "继续对话，提出修改意见或要求生成新版..."
         }
+        pendingImages={pendingImages}
+        onAddImages={addImages}
+        onRemoveImage={removeImage}
+        canAddMoreImages={canAddMore}
+        maxImageCount={maxCount}
       />
     </div>
   );

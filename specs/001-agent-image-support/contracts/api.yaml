@@ -1,0 +1,217 @@
+# API Contract: Agent 框架调整与图片支持
+#
+# 注意: 此文件仅作为设计参考，实际 OpenAPI 由 FastAPI 自动生成
+# Feature: 001-agent-image-support
+# Date: 2026-01-14
+
+openapi: 3.0.3
+info:
+  title: PRD 生成器 API - 图片支持扩展
+  version: 2.0.0
+  description: |
+    扩展现有 PRD 生成 API，支持多模态输入（文本 + 图片）。
+    向后兼容：无图片时行为与 v1 完全一致。
+
+paths:
+  /api/v1/generate:
+    post:
+      summary: 生成或讨论 PRD
+      description: |
+        支持两种模式：
+        - generate: 从零生成新 PRD（可附带图片）
+        - chat: 讨论或修改现有 PRD（可附带图片）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationRequest'
+            examples:
+              纯文本生成:
+                summary: 传统文本输入（向后兼容）
+                value:
+                  description: "我需要一个用户登录功能"
+                  mode: "generate"
+                  stream: true
+              带图片生成:
+                summary: 图片 + 文本输入
+                value:
+                  description: "请根据这个 UI 设计稿生成 PRD"
+                  mode: "generate"
+                  stream: true
+                  images:
+                    - data: "/9j/4AAQSkZJRgABAQEASABIAAD..."
+                      mime_type: "image/jpeg"
+                      filename: "login-ui.jpg"
+                      size: 1048576
+              对话模式带图片:
+                summary: Chat 模式附带新图片
+                value:
+                  description: "请参考这个新设计图更新登录流程"
+                  mode: "chat"
+                  stream: true
+                  current_prd: "# 用户登录 PRD\n..."
+                  images:
+                    - data: "/9j/4AAQSkZJRgABAQEASABIAAD..."
+                      mime_type: "image/png"
+      responses:
+        '200':
+          description: 流式响应（NDJSON）
+          content:
+            application/x-ndjson:
+              schema:
+                $ref: '#/components/schemas/StreamEvent'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                图片过大:
+                  value:
+                    detail: "图片大小超过 10MB 限制"
+                图片过多:
+                  value:
+                    detail: "单次请求最多支持 5 张图片"
+                格式不支持:
+                  value:
+                    detail: "不支持的图片格式，请使用 JPEG、PNG、GIF 或 WebP"
+        '422':
+          description: 验证错误
+        '500':
+          description: 服务器错误
+
+components:
+  schemas:
+    ImageAttachment:
+      type: object
+      description: 图片附件
+      required:
+        - data
+        - mime_type
+      properties:
+        data:
+          type: string
+          format: byte
+          description: Base64 编码的图片数据（不含 data URI 前缀）
+          example: "/9j/4AAQSkZJRgABAQEASABIAAD..."
+        mime_type:
+          type: string
+          enum:
+            - image/jpeg
+            - image/png
+            - image/gif
+            - image/webp
+          description: 图片 MIME 类型
+          example: "image/jpeg"
+        filename:
+          type: string
+          maxLength: 255
+          description: 原始文件名（可选）
+          example: "ui-mockup.jpg"
+        size:
+          type: integer
+          maximum: 10485760
+          description: 原始文件大小（字节），最大 10MB
+          example: 1048576
+
+    ChatMessage:
+      type: object
+      description: 对话消息
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+          description: 消息角色
+        content:
+          type: string
+          minLength: 1
+          description: 消息内容
+
+    GenerationRequest:
+      type: object
+      description: 生成请求
+      required:
+        - description
+      properties:
+        description:
+          type: string
+          minLength: 1
+          description: 功能描述或用户消息
+        stream:
+          type: boolean
+          default: true
+          description: 是否流式响应
+        mode:
+          type: string
+          enum: [generate, chat]
+          default: generate
+          description: |
+            生成模式：
+            - generate: 从零生成新 PRD
+            - chat: 讨论或修改现有 PRD
+        current_prd:
+          type: string
+          nullable: true
+          description: chat 模式下的当前 PRD 内容
+        chat_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+          maxItems: 4
+          nullable: true
+          description: 对话历史（最多 4 条，即 2 轮）
+        session_id:
+          type: string
+          nullable: true
+          description: 会话标识符
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageAttachment'
+          maxItems: 5
+          nullable: true
+          description: 图片附件列表（最多 5 张）
+
+    StreamEvent:
+      type: object
+      description: 流式事件
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [content, reasoning, error, usage, metadata]
+          description: 事件类型
+        content:
+          type: string
+          description: 内容片段（type=content 或 reasoning 时）
+        message:
+          type: string
+          description: 错误消息（type=error 时）
+        code:
+          type: string
+          description: 错误代码（type=error 时）
+        input_tokens:
+          type: integer
+          description: 输入 token 数（type=usage 时）
+        output_tokens:
+          type: integer
+          description: 输出 token 数（type=usage 时）
+        total_tokens:
+          type: integer
+          description: 总 token 数（type=usage 时）
+        is_full_prd:
+          type: boolean
+          description: 是否为完整 PRD（type=metadata 时，chat 模式）
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: 错误详情

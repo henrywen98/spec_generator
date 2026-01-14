@@ -152,6 +152,8 @@ Frontend tests use Vitest with React Testing Library.
 ## Active Technologies
 - Python 3.12, TypeScript 5.x + FastAPI, LangChain (langchain-community), Next.js 16, React 19 (001-chat-context)
 - N/A（无持久化存储，对话历史在前端内存中管理） (001-chat-context)
+- Python 3.12, TypeScript 5.x + FastAPI, DashScope SDK (dashscope>=1.24.6), Next.js 16, React 19 (001-agent-image-support)
+- N/A（无持久化，图片仅在请求生命周期内使用） (001-agent-image-support)
 
 ## Recent Changes
 - 001-chat-context: Added Python 3.12, TypeScript 5.x + FastAPI, LangChain (langchain-community), Next.js 16, React 19

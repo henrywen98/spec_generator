@@ -9,6 +9,7 @@ services:
       - ./prompts/prompt-chat.md:/app/prompts/prompt-chat.md:ro
     environment:
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - DASHSCOPE_VL_MODEL=${DASHSCOPE_VL_MODEL:-qwen-vl-plus}
       - ENABLE_THINKING=${ENABLE_THINKING}
       - PROMPT_FILE_PATH=/app/prompts/prompt.md
       - PROMPT_CHAT_FILE_PATH=/app/prompts/prompt-chat.md

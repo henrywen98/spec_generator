@@ -35,7 +35,12 @@ async def generate_spec(
     llm_service: LLMService = Depends(get_llm_service)
 ):
     if request.session_id:
-        logger.info("generate request session_id=%s mode=%s", request.session_id, request.mode)
+        logger.info(
+            "generate request session_id=%s mode=%s images=%d",
+            request.session_id,
+            request.mode,
+            len(request.images) if request.images else 0
+        )
 
     if request.mode == "chat":
         # Chat mode: discuss or modify existing PRD
@@ -45,10 +50,14 @@ async def generate_spec(
             current_prd=request.current_prd,
             user_message=request.description,
             chat_history=request.chat_history,
+            images=request.images,
         )
     else:
         # Generate mode (default): create PRD from scratch
-        generator = llm_service.generate_stream(request.description)
+        generator = llm_service.generate_stream(
+            user_description=request.description,
+            images=request.images,
+        )
 
     if request.stream:
         return StreamingResponse(generator, media_type="application/x-ndjson")

@@ -2,19 +2,33 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Square } from 'lucide-react';
+import { ImageUpload } from './image-upload';
+import { ImagePreviewList } from './image-preview';
+import type { PendingImage } from '@/hooks/useImageUpload';
 
 interface ChatInputProps {
     onSend: (message: string) => void;
     onStop?: () => void;
     isLoading: boolean;
     placeholder?: string;
+    // Image upload props
+    pendingImages?: PendingImage[];
+    onAddImages?: (files: FileList) => void;
+    onRemoveImage?: (id: string) => void;
+    canAddMoreImages?: boolean;
+    maxImageCount?: number;
 }
 
 export default function ChatInput({
     onSend,
     onStop,
     isLoading,
-    placeholder = "输入功能需求或修改意见..."
+    placeholder = "输入功能需求或修改意见...",
+    pendingImages = [],
+    onAddImages,
+    onRemoveImage,
+    canAddMoreImages = true,
+    maxImageCount = 5,
 }: ChatInputProps) {
     const [input, setInput] = useState('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -48,14 +62,37 @@ export default function ChatInput({
         }
     };
 
+    // Check if image upload is enabled
+    const imageUploadEnabled = !!onAddImages && !!onRemoveImage;
+
     return (
         <div className="border-t border-gray-200 bg-white p-4">
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto space-y-3">
+                {/* Image preview list (above input area) */}
+                {imageUploadEnabled && pendingImages.length > 0 && (
+                    <ImagePreviewList
+                        images={pendingImages}
+                        onRemove={onRemoveImage}
+                        maxCount={maxImageCount}
+                    />
+                )}
+
                 <div className="flex items-end gap-3 bg-gray-50 rounded-2xl border border-gray-200 p-2">
+                    {/* Image upload button (left of text input) */}
+                    {imageUploadEnabled && (
+                        <ImageUpload
+                            onFilesSelected={onAddImages}
+                            disabled={isLoading}
+                            canAddMore={canAddMoreImages}
+                            maxCount={maxImageCount}
+                            currentCount={pendingImages.length}
+                        />
+                    )}
+
                     <textarea
                         ref={textareaRef}
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={placeholder}
                         rows={1}

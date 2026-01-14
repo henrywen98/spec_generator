@@ -1,8 +1,8 @@
 import json
 import logging
 import os
-from http import HTTPStatus
 from collections.abc import Generator
+from http import HTTPStatus
 
 import dashscope
 from dashscope.api_entities.dashscope_response import Message

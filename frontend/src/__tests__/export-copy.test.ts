@@ -2,18 +2,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { copyToClipboard } from '../lib/export/export-copy';
 
 describe('copyToClipboard', () => {
-  let originalClipboard: any;
-  let originalExecCommand: any;
+  let originalClipboard: Clipboard | undefined;
+  let originalExecCommand: typeof document.execCommand;
 
   beforeEach(() => {
     // Save original values
-    originalClipboard = (navigator as any).clipboard;
+    originalClipboard = navigator.clipboard;
     originalExecCommand = document.execCommand;
   });
 
   afterEach(() => {
     // Restore original values
-    (navigator as any).clipboard = originalClipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      value: originalClipboard,
+      writable: true,
+    });
     document.execCommand = originalExecCommand;
     vi.clearAllMocks();
   });

@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import ChatMessage from '@/components/chat-message';
 import ChatInput from '@/components/chat-input';
-import { generateSpecStream, GenerationMode, ChatHistoryMessage, ImageAttachment } from '@/services/api';
+import { generateSpecStream, GenerationMode, ImageAttachment } from '@/services/api';
 import { useStreamParser, TokenUsage } from '@/hooks/useStreamParser';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { ArrowDown } from 'lucide-react';
@@ -19,37 +19,8 @@ interface Message {
   promptSource?: string; // e.g., "@prompts/prompt.md", "@prompts/prompt-suggestions.md"
 }
 
-/**
- * 过滤消息，排除不应传递给 LLM 的消息：
- * - 错误消息（以 ❌ 开头）
- * - 中断消息（⏹️ 已停止生成）
- * - 完整 PRD 消息（有 version 标记）
- * - 正在流式输出的消息
- */
-function isValidHistoryMessage(msg: Message): boolean {
-  if (msg.isStreaming) return false;
-  if (msg.version !== undefined) return false;
-  if (msg.content.startsWith('❌')) return false;
-  if (msg.content === '⏹️ 已停止生成') return false;
-  return true;
-}
-
-/**
- * 获取最近 2 轮对话历史（最多 4 条消息）
- * 按规格 FR-001 实现
- */
-function getChatHistory(messages: Message[]): ChatHistoryMessage[] {
-  const validMessages = messages.filter(isValidHistoryMessage);
-  // 取最近 4 条消息（2 轮对话）
-  const recentMessages = validMessages.slice(-4);
-  return recentMessages.map(msg => ({
-    role: msg.role,
-    content: msg.content,
-  }));
-}
-
 export default function Home() {
-  const { reasoningContent, markdownContent, tokenUsage, isFullPrd, parseChunk, reset } = useStreamParser();
+  const { reasoningContent, markdownContent, tokenUsage, parseChunk, reset } = useStreamParser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
@@ -118,39 +89,15 @@ export default function Home() {
   // Finalize message when streaming completes
   useEffect(() => {
     if (!isLoading && markdownContent && messages.length > 0) {
-      // 使用 updateLastAssistant 的 updater 函数来检查消息状态
-      // 这避免了将 messages 作为依赖项导致的无限循环
-      updateLastAssistant(message => {
-        // 检查是否为 chat 模式下的完整 PRD 输出（需要递增版本号）
-        const isChatModeFullPrd = message.role === 'assistant'
-          && message.version === undefined
-          && isFullPrd === true;
-
-        if (isChatModeFullPrd) {
-          // Chat 模式下输出了完整 PRD，使用 ref 同步递增版本号
-          versionCountRef.current += 1;
-          const newVersion = versionCountRef.current;
-          setVersionCount(newVersion);
-          return {
-            ...message,
-            content: markdownContent,
-            tokenUsage,
-            reasoningContent,
-            isStreaming: false,
-            version: newVersion,
-          };
-        } else {
-          return {
-            ...message,
-            content: markdownContent,
-            tokenUsage,
-            reasoningContent,
-            isStreaming: false,
-          };
-        }
-      });
+      updateLastAssistant(message => ({
+        ...message,
+        content: markdownContent,
+        tokenUsage,
+        reasoningContent,
+        isStreaming: false,
+      }));
     }
-  }, [isLoading, markdownContent, tokenUsage, reasoningContent, isFullPrd, messages.length, updateLastAssistant]);
+  }, [isLoading, markdownContent, tokenUsage, reasoningContent, messages.length, updateLastAssistant]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -191,13 +138,10 @@ export default function Home() {
     };
 
     // Add placeholder assistant message
-    // For initial generation, always create a new version
-    // For chat mode, we'll update version later if LLM outputs a full PRD
-    let newVersion: number | undefined;
-    if (isInitialGeneration) {
-      versionCountRef.current += 1;
-      newVersion = versionCountRef.current;
-    }
+    // Both generate and chat mode always produce a new version
+    versionCountRef.current += 1;
+    const newVersion = versionCountRef.current;
+
     const assistantMessage: Message = {
       id: crypto.randomUUID(),
       role: 'assistant',
@@ -208,9 +152,7 @@ export default function Home() {
     };
 
     setMessages(prev => [...prev, userMessage, assistantMessage]);
-    if (isInitialGeneration) {
-      setVersionCount(versionCountRef.current);
-    }
+    setVersionCount(newVersion);
 
     // Clear images after adding to state (images are captured above)
     clearImages();
@@ -218,14 +160,10 @@ export default function Home() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // 获取对话历史（仅在 chat 模式下传递）
-    const chatHistory = isInitialGeneration ? undefined : getChatHistory(messages);
-
-    // Build options with images
+    // Build options (no chat history needed - simplified flow)
     const options = {
       mode,
       currentPrd: isInitialGeneration ? undefined : currentPrd,
-      chatHistory,
       sessionId,
       signal: controller.signal,
       images: imageAttachments.length > 0 ? imageAttachments as ImageAttachment[] : undefined,

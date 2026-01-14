@@ -1,6 +1,13 @@
+# Increase line length to 120 to reduce wrapping
+line-length = 120
+
 [lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "ARG"]
-ignore = []
+ignore = [
+    "B008",  # FastAPI Depends() in default args is idiomatic
+    "ARG001",  # Unused function arguments (common in FastAPI dependencies)
+    "ARG005",  # Unused lambda arguments (common in mocks)
+]
 
 [format]
 quote-style = "double"

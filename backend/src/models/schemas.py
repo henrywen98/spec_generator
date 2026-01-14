@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, timezone
 from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
 
 # 支持的图片 MIME 类型
 SUPPORTED_IMAGE_TYPES = Literal["image/jpeg", "image/png", "image/gif", "image/webp"]
@@ -14,6 +15,7 @@ MAX_IMAGES_PER_REQUEST = 5
 
 class ImageAttachment(BaseModel):
     """用户上传的图片附件，包含 Base64 编码数据和元信息。"""
+
     data: str = Field(..., description="Base64 编码的图片数据（不含 data URI 前缀）")
     mime_type: SUPPORTED_IMAGE_TYPES = Field(..., description="图片 MIME 类型")
     filename: str | None = Field(default=None, max_length=255, description="原始文件名")
@@ -22,6 +24,7 @@ class ImageAttachment(BaseModel):
 
 class ChatMessage(BaseModel):
     """单条对话消息，用于前后端通信和 LangChain 消息构建。"""
+
     role: Literal["user", "assistant"]
     content: str = Field(..., min_length=1)
 
@@ -29,18 +32,16 @@ class ChatMessage(BaseModel):
 class GenerationRequest(BaseModel):
     description: str = Field(..., min_length=1, description="Feature description or user message")
     stream: bool = Field(default=True, description="Whether to stream the response")
-    mode: Literal["generate", "chat"] = Field(default="generate", description="Generation mode: generate=initial PRD from scratch, chat=discuss/modify existing PRD")
+    mode: Literal["generate", "chat"] = Field(
+        default="generate",
+        description="Generation mode: generate=initial PRD from scratch, chat=modify existing PRD",
+    )
     current_prd: str | None = Field(default=None, description="Current PRD content for chat mode")
-    chat_history: list[ChatMessage] | None = Field(default=None, description="Chat history (max 4 messages, i.e., 2 rounds)")
+    chat_history: list[ChatMessage] | None = Field(
+        default=None, description="[DEPRECATED] No longer used, kept for backward compatibility"
+    )
     session_id: str | None = Field(default=None, description="Session identifier for conversation tracking")
     images: list[ImageAttachment] | None = Field(default=None, description="Image attachments (max 5 images)")
-
-    @field_validator("chat_history")
-    @classmethod
-    def validate_chat_history_length(cls, v: list[ChatMessage] | None) -> list[ChatMessage] | None:
-        if v is not None and len(v) > 4:
-            raise ValueError("chat_history cannot exceed 4 messages (2 rounds)")
-        return v
 
     @field_validator("images")
     @classmethod

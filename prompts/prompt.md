@@ -120,7 +120,6 @@ Generate a complete specification document in a single response. All unclear asp
    - 形成完整的功能需求理解
    - Make informed guesses based on context and industry standards
    - Use reasonable defaults for unspecified details
-   - Make clear decisions, do not ask questions or list items for user to decide
 
 4. **Generate Background & Overview**
    - Describe current pain points and why this feature is needed
@@ -183,8 +182,8 @@ Apply reasonable defaults for unspecified details:
 
 Since this is a single-turn conversation:
 - Generate a complete, usable draft in one response
-- Make best-guess decisions for all unclear points
-- Do not ask questions or request confirmations
+- 对不清晰的点先做合理假设，同时在尾部"待确认/假设"章节标注
+- 正文保持完整可用，问题集中在尾部供用户确认
 - The user can directly edit the output document or ask for modifications later
 
 ---
@@ -267,7 +266,11 @@ Since this is a single-turn conversation:
 
 ## 9. 待确认/假设
 
-- [需要确认的问题或已做的合理假设]
+> 以下内容需要产品确认，正文中已按合理假设处理
+
+| 位置 | 假设内容 | 待确认问题 |
+|------|----------|-----------|
+| [章节] | [AI 的假设] | [需要确认什么] |
 ```
 
 ---
@@ -284,7 +287,7 @@ Since this is a single-turn conversation:
 | 验收场景               | ✅ Mandatory  | 使用 Given/When/Then 格式，包含边界情况              |
 | 异常处理               | ✅ Mandatory  | 场景-处理方式表格                                   |
 | 范围外                 | Optional     | 明确不做什么，避免范围蔓延                          |
-| 待确认/假设            | Optional     | 记录假设和待确认问题                                |
+| 待确认/假设            | ✅ Mandatory（有假设时） | 表格形式记录假设和待确认问题                        |
 
 **章节不适用时直接移除，不要留 "N/A"。**
 

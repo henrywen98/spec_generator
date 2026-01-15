@@ -23,3 +23,9 @@ htmlcov/
 .idea/
 .vscode/
 *.swp
+
+# BMAD
+_bmad/
+_bmad-output/
+docs/
+.claude/commands/bmad

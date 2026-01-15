@@ -23,7 +23,11 @@ export default function Home() {
   const { reasoningContent, markdownContent, tokenUsage, parseChunk, reset } = useStreamParser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId] = useState(() =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2) + Date.now().toString(36)
+  );
   const [versionCount, setVersionCount] = useState(0);
   const versionCountRef = useRef(0); // 用于同步获取最新版本号，避免竞态条件
   const [showScrollButton, setShowScrollButton] = useState(false);

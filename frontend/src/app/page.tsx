@@ -7,6 +7,7 @@ import { generateSpecStream, GenerationMode, ImageAttachment } from '@/services/
 import { useStreamParser, TokenUsage } from '@/hooks/useStreamParser';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { ArrowDown } from 'lucide-react';
+import { generateUUID } from '@/utils/uuid';
 
 interface Message {
   id: string;
@@ -23,11 +24,7 @@ export default function Home() {
   const { reasoningContent, markdownContent, tokenUsage, parseChunk, reset } = useStreamParser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId] = useState(() =>
-    typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2) + Date.now().toString(36)
-  );
+  const [sessionId] = useState(() => generateUUID());
   const [versionCount, setVersionCount] = useState(0);
   const versionCountRef = useRef(0); // 用于同步获取最新版本号，避免竞态条件
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -147,7 +144,7 @@ export default function Home() {
 
     // Add user message
     const userMessage: Message = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       role: 'user',
       content: userInput,
     };
@@ -158,7 +155,7 @@ export default function Home() {
     const newVersion = versionCountRef.current;
 
     const assistantMessage: Message = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       role: 'assistant',
       content: '',
       version: newVersion,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { generateUUID } from '@/utils/uuid';
 
 // 支持的图片格式
 export const SUPPORTED_IMAGE_TYPES = [
@@ -122,7 +123,7 @@ export function useImageUpload() {
       if (!validation.valid) {
         // 添加错误状态的图片
         newImages.push({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           file,
           preview: '',
           base64: '',
@@ -138,7 +139,7 @@ export function useImageUpload() {
         const preview = URL.createObjectURL(file);
 
         newImages.push({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           file,
           preview,
           base64,
@@ -147,7 +148,7 @@ export function useImageUpload() {
         });
       } catch {
         newImages.push({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           file,
           preview: '',
           base64: '',

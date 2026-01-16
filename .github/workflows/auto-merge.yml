@@ -1,0 +1,20 @@
+name: Auto Merge
+
+on:
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.check_suite.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: pascalgn/automerge-action@v0.16.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: squash
+          MERGE_DELETE_BRANCH: true

@@ -7,12 +7,12 @@ docker stop spec-nginx spec-frontend-prod spec-backend-prod 2>/dev/null
 docker rm spec-nginx spec-frontend-prod spec-backend-prod 2>/dev/null
 
 # Load environment variables
-export DASHSCOPE_API_KEY=$(grep DASHSCOPE_API_KEY .env | cut -d'=' -f2)
-export DASHSCOPE_MODEL=$(grep DASHSCOPE_MODEL .env | cut -d'=' -f2)
-export DASHSCOPE_VL_MODEL=$(grep DASHSCOPE_VL_MODEL .env | cut -d'=' -f2)
-export ENABLE_THINKING=$(grep ENABLE_THINKING .env | cut -d'=' -f2)
-export DEBUG_ERRORS=$(grep DEBUG_ERRORS .env | cut -d'=' -f2)
-export ALLOWED_ORIGINS=$(grep ALLOWED_ORIGINS .env | cut -d'=' -f2)
+export DASHSCOPE_API_KEY=$(grep "^DASHSCOPE_API_KEY=" .env | cut -d'=' -f2)
+export DASHSCOPE_MODEL=$(grep "^DASHSCOPE_MODEL=" .env | cut -d'=' -f2)
+export DASHSCOPE_VL_MODEL=$(grep "^DASHSCOPE_VL_MODEL=" .env | cut -d'=' -f2)
+export ENABLE_THINKING=$(grep "^ENABLE_THINKING=" .env | cut -d'=' -f2)
+export DEBUG_ERRORS=$(grep "^DEBUG_ERRORS=" .env | cut -d'=' -f2)
+export ALLOWED_ORIGINS=$(grep "^ALLOWED_ORIGINS=" .env | cut -d'=' -f2)
 
 # Create network if not exists
 docker network create app-network 2>/dev/null || true

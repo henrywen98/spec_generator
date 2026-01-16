@@ -197,7 +197,10 @@ class LLMService:
                         elif isinstance(content, str):
                             yield self._emit_event({"type": "content", "content": content})
             else:
-                logger.error("VL API error: status=%s, code=%s, message=%s", response.status_code, response.code, response.message)
+                logger.error(
+                    "VL API error: status=%s, code=%s, message=%s",
+                    response.status_code, response.code, response.message
+                )
                 error_msg = response.message if self.debug_errors else "Upstream model error"
                 yield self._emit_event({"type": "error", "message": error_msg, "code": response.code})
 

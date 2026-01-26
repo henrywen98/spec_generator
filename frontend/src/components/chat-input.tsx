@@ -11,6 +11,7 @@ interface ChatInputProps {
     onStop?: () => void;
     isLoading: boolean;
     placeholder?: string;
+    onInputResize?: () => void;
     // Image upload props
     pendingImages?: PendingImage[];
     onAddImages?: (files: FileList) => void;
@@ -24,6 +25,7 @@ export default function ChatInput({
     onStop,
     isLoading,
     placeholder = "输入功能需求或修改意见...",
+    onInputResize,
     pendingImages = [],
     onAddImages,
     onRemoveImage,
@@ -36,10 +38,14 @@ export default function ChatInput({
     // Auto-resize textarea
     useEffect(() => {
         if (textareaRef.current) {
+            const prevHeight = textareaRef.current.offsetHeight;
             textareaRef.current.style.height = 'auto';
             textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+            if (textareaRef.current.offsetHeight !== prevHeight) {
+                onInputResize?.();
+            }
         }
-    }, [input]);
+    }, [input, onInputResize]);
 
     const handleSubmit = () => {
         if (isLoading) {

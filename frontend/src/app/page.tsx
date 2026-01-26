@@ -60,23 +60,36 @@ export default function Home() {
     });
   }, []);
 
-  // Check if user is near bottom
-  const checkScrollPosition = useCallback(() => {
+  // Detect user-initiated scroll via wheel/touch (programmatic scroll won't trigger these)
+  const handleUserScroll = useCallback(() => {
     const container = messagesContainerRef.current;
-    if (container) {
+    if (!container) return;
+    requestAnimationFrame(() => {
       const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-      setShowScrollButton(!isNearBottom);
-      setUserHasScrolledUp(!isNearBottom); // Track if user scrolled up
-    }
+      setUserHasScrolledUp(!isNearBottom);
+    });
+  }, []);
+
+  // Scroll event only controls the "scroll to bottom" button visibility
+  const handleScrollForButton = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
   }, []);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
-    if (container) {
-      container.addEventListener('scroll', checkScrollPosition);
-      return () => container.removeEventListener('scroll', checkScrollPosition);
-    }
-  }, [checkScrollPosition]);
+    if (!container) return;
+    container.addEventListener('scroll', handleScrollForButton);
+    container.addEventListener('wheel', handleUserScroll);
+    container.addEventListener('touchmove', handleUserScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScrollForButton);
+      container.removeEventListener('wheel', handleUserScroll);
+      container.removeEventListener('touchmove', handleUserScroll);
+    };
+  }, [handleScrollForButton, handleUserScroll]);
 
   // Update the last assistant message with streaming content (no auto-scroll)
   useEffect(() => {
@@ -92,9 +105,16 @@ export default function Home() {
   // Auto-scroll when content updates during streaming, unless user scrolled up
   useEffect(() => {
     if (isLoading && !userHasScrolledUp) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
     }
   }, [markdownContent, reasoningContent, isLoading, userHasScrolledUp]);
+
+  // Compensate scroll position when textarea resizes (e.g., Shift+Enter)
+  const handleInputResize = useCallback(() => {
+    if (!userHasScrolledUp) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    }
+  }, [userHasScrolledUp]);
 
   // Finalize message when streaming completes
   useEffect(() => {
@@ -299,6 +319,7 @@ export default function Home() {
         onSend={handleSend}
         onStop={handleStop}
         isLoading={isLoading}
+        onInputResize={handleInputResize}
         placeholder={
           versionCount === 0
             ? "描述您的功能需求..."
